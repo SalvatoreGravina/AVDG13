@@ -4,7 +4,7 @@ import argparse
 import cv2
 
 from postprocessing import draw_boxes
-from predict import predict_with_model_from_file, get_model_from_file
+from predict import predict_with_model_from_file, get_model
 
 
 BASE_DIR = os.path.dirname(__file__)
@@ -13,7 +13,7 @@ OUT_IMAGES_DIR = os.path.join(BASE_DIR, 'out')
 
 
 def detect_on_test_images(config):
-    model = get_model_from_file(config)
+    model = get_model(config)
 
     all_images = [f for f in os.listdir(TEST_IMAGES_DIR) if os.path.isfile(os.path.join(TEST_IMAGES_DIR, f))]
     img_num = 1
@@ -22,9 +22,6 @@ def detect_on_test_images(config):
 
         netout = predict_with_model_from_file(config, model, image_path)
         plt_image = draw_boxes(cv2.imread(image_path), netout, config['model']['classes'])
-
-        #cv2.imshow('demo', plt_image)
-        #cv2.waitKey(0)
 
         cv2.imwrite(os.path.join(OUT_IMAGES_DIR, 'out' + str(img_num) + '.png'), plt_image)
         img_num += 1
