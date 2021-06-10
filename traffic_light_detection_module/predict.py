@@ -14,7 +14,7 @@ def get_model(config):
     model = YOLO(
          config =config
     )
-    model.model.load_weights(os.path.join(BASE_DIR, config['model']['saved_model_name']))
+    model.model.load_weights(os.path.join(BASE_DIR, 'checkpoints',config['model']['saved_model_name']))
     return model
 
 

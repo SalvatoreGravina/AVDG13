@@ -47,6 +47,8 @@ Pillow = "==8.2.0"
 PyYAML = "==5.4.1"
 Telethon = "==1.21.1"
 Werkzeug = "==2.0.1"
+pandas = "*"
+imgaug = "*"
 
 [dev-packages]
 
