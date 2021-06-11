@@ -206,6 +206,18 @@ def make_carla_settings(args):
 
     # Declare here your sensors
 
+    # Camera RGB
+    camera0 = Camera('CameraRGB')
+    # set pixel Resolution: WIDTH * HEIGHT
+    camera0.set_image_size(camera_width, camera_height)
+    # set position X (front), Y (lateral), Z (height) relative to the car in meters
+    # (0,0,0) is at center of baseline of car 
+    camera0.set_position(cam_x_pos, cam_y_pos, cam_height)
+    # set field of view
+    camera0.set(FOV=camera_fov)
+    # Adding camera to configuration 
+    settings.add_sensor(camera0)
+
     return settings
 
 class Timer(object):
@@ -781,6 +793,12 @@ def exec_waypoint_nav_demo(args):
 
             # UPDATE HERE the obstacles list
             obstacles = []
+
+            camera = sensor_data.get('CameraRGB',None)
+            if camera0 is not None:
+                image = image_converter.to_bgra_array(camera)
+                cv2.imshow("CameraRGB", image)
+                cv2.waitKey(1)
 
             # Update pose and timestamp
             prev_timestamp = current_timestamp
