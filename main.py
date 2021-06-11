@@ -12,7 +12,7 @@ import math
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
-from numpy.core.defchararray import index
+from numpy.core.defchararray import decode, index
 import controller2d
 import configparser 
 import local_planner
@@ -23,6 +23,7 @@ from math import sin, cos, pi, tan, sqrt
 
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
+sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
 import live_plotter as lv   # Custom live plotting library
 from carla            import sensor
 from carla.client     import make_carla_client, VehicleControl
@@ -32,6 +33,13 @@ from carla.controller import utils
 from carla.sensor import Camera
 from carla.image_converter import labels_to_array, depth_to_array, to_bgra_array
 from carla.planner.city_track import CityTrack
+
+
+
+# Import nostri
+from traffic_light_detection_module.yolo import YOLO, dummy_loss
+from traffic_light_detection_module.preprocessing import load_image_predict_from_numpy_array
+from traffic_light_detection_module.postprocessing import decode_netout, draw_boxes
 
 
 ###############################################################################
@@ -111,6 +119,10 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 
+# detector config file
+with open('./traffic_light_detection_module/config.json') as config_buffer:
+        DETECTOR_CONFIG = json.loads(config_buffer.read())
+
 # Camera parameters
 camera_parameters = {}
 camera_parameters['x'] = 1.8
@@ -178,7 +190,7 @@ def make_carla_settings(args):
     """Make a CarlaSettings object with the settings we need.
     """
     settings = CarlaSettings()
-    
+
     # There is no need for non-agent info requests if there are no pedestrians
     # or vehicles.
     get_non_player_agents_info = False
@@ -380,6 +392,7 @@ def write_collisioncount_file(collided_list):
         collision_file.write(str(sum(collided_list)))
 
 def make_correction(waypoint,previuos_waypoint,desired_speed):
+
     dx = waypoint[0] - previuos_waypoint[0]
     dy = waypoint[1] - previuos_waypoint[1]
 
@@ -403,6 +416,7 @@ def make_correction(waypoint,previuos_waypoint,desired_speed):
     waypoint_on_lane[2] = desired_speed
 
     return waypoint_on_lane
+
 def exec_waypoint_nav_demo(args):
     """ Executes waypoint navigation demo.
     """
@@ -768,6 +782,12 @@ def exec_waypoint_nav_demo(args):
                                         STOP_LINE_BUFFER)
         bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE,
                                                     LEAD_VEHICLE_LOOKAHEAD)
+        #############################################
+        # Load detector
+        #############################################
+        # Section to load and configure the detector
+
+        model = YOLO(config=DETECTOR_CONFIG)
 
         #############################################
         # Scenario Execution Loop
@@ -787,6 +807,9 @@ def exec_waypoint_nav_demo(args):
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
 
+
+
+
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
@@ -794,10 +817,19 @@ def exec_waypoint_nav_demo(args):
             # UPDATE HERE the obstacles list
             obstacles = []
 
+            # SHOW IMAGE FROM CAMERA
             camera = sensor_data.get('CameraRGB',None)
-            if camera0 is not None:
-                image = image_converter.to_bgra_array(camera)
-                cv2.imshow("CameraRGB", image)
+            if camera is not None:
+                image = to_bgra_array(camera)
+                image_to_detect = load_image_predict_from_numpy_array(image, DETECTOR_CONFIG['model']['image_h'], DETECTOR_CONFIG['model']['image_w'])
+                dummy_array = np.zeros((1, 1, 1, 1, DETECTOR_CONFIG['model']['max_obj'], 4))
+                netout = model.model.predict([image_to_detect, dummy_array])[0]
+                boxes = decode_netout(netout=netout, anchors=DETECTOR_CONFIG['model']['anchors'],
+                          nb_class=DETECTOR_CONFIG['model']['num_classes'],
+                          obj_threshold=DETECTOR_CONFIG['model']['obj_thresh'],
+                          nms_threshold=DETECTOR_CONFIG['model']['nms_thresh'])
+                plt_image = draw_boxes(image, boxes, DETECTOR_CONFIG['model']['classes'])
+                cv2.imshow("CameraRGB", plt_image)
                 cv2.waitKey(1)
 
             # Update pose and timestamp

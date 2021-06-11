@@ -134,10 +134,9 @@ class YOLO(object):
         """pretrained = load_model(config['model']['saved_model_name'], custom_objects={'custom_loss': self.custom_loss, 'tf': tf})
         self.model.get_layer('DetectionLayer').set_weights(
             pretrained.get_layer('DetectionLayer').get_weights())
-
-        self.model.load_weights(config['model']['saved_model_name'])
-
         """
+        print(os.path.join(BASE_DIR, 'checkpoints',config['model']['saved_model_name']))
+        self.model.load_weights(os.path.join(BASE_DIR, 'checkpoints',config['model']['saved_model_name']))
 
     def load_weights(self, model_path):
         model = load_model(model_path, custom_objects={'custom_loss': self.custom_loss, 'tf': tf})
