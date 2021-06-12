@@ -128,8 +128,8 @@ camera_parameters = {}
 camera_parameters['x'] = 1.8
 camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
-camera_parameters['width'] = 200
-camera_parameters['height'] = 200
+camera_parameters['width'] = 416  # default 200
+camera_parameters['height'] = 416 # default 200
 camera_parameters['fov'] = 90
 
 def rotate_x(angle):
@@ -219,16 +219,21 @@ def make_carla_settings(args):
     # Declare here your sensors
 
     # Camera RGB
-    camera0 = Camera('CameraRGB')
+    camera0 = Camera('CameraRGB0')
+    camera1 = Camera('CameraRGB1')
     # set pixel Resolution: WIDTH * HEIGHT
     camera0.set_image_size(camera_width, camera_height)
+    camera1.set_image_size(camera_width, camera_height)
     # set position X (front), Y (lateral), Z (height) relative to the car in meters
     # (0,0,0) is at center of baseline of car 
-    camera0.set_position(cam_x_pos, cam_y_pos, cam_height)
+    camera0.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
+    camera1.set_position(cam_x_pos, cam_y_pos-0.5, cam_height)
     # set field of view
     camera0.set(FOV=camera_fov)
+    camera1.set(FOV=camera_fov)
     # Adding camera to configuration 
     settings.add_sensor(camera0)
+    settings.add_sensor(camera1)
 
     return settings
 
@@ -818,9 +823,11 @@ def exec_waypoint_nav_demo(args):
             obstacles = []
 
             # SHOW IMAGE FROM CAMERA
-            camera = sensor_data.get('CameraRGB',None)
-            if camera is not None:
-                image = to_bgra_array(camera)
+            camera0 = sensor_data.get('CameraRGB0',None)
+            camera1 = sensor_data.get('CameraRGB1',None)
+
+            if camera0 is not None:
+                image = to_bgra_array(camera0)
                 image_to_detect = load_image_predict_from_numpy_array(image, DETECTOR_CONFIG['model']['image_h'], DETECTOR_CONFIG['model']['image_w'])
                 dummy_array = np.zeros((1, 1, 1, 1, DETECTOR_CONFIG['model']['max_obj'], 4))
                 netout = model.model.predict([image_to_detect, dummy_array])[0]
@@ -829,7 +836,19 @@ def exec_waypoint_nav_demo(args):
                           obj_threshold=DETECTOR_CONFIG['model']['obj_thresh'],
                           nms_threshold=DETECTOR_CONFIG['model']['nms_thresh'])
                 plt_image = draw_boxes(image, boxes, DETECTOR_CONFIG['model']['classes'])
-                cv2.imshow("CameraRGB", plt_image)
+                cv2.imshow("CameraRGB0", plt_image)
+                cv2.waitKey(1)
+            if camera1 is not None:
+                image = to_bgra_array(camera1)
+                image_to_detect = load_image_predict_from_numpy_array(image, DETECTOR_CONFIG['model']['image_h'], DETECTOR_CONFIG['model']['image_w'])
+                dummy_array = np.zeros((1, 1, 1, 1, DETECTOR_CONFIG['model']['max_obj'], 4))
+                netout = model.model.predict([image_to_detect, dummy_array])[0]
+                boxes = decode_netout(netout=netout, anchors=DETECTOR_CONFIG['model']['anchors'],
+                          nb_class=DETECTOR_CONFIG['model']['num_classes'],
+                          obj_threshold=DETECTOR_CONFIG['model']['obj_thresh'],
+                          nms_threshold=DETECTOR_CONFIG['model']['nms_thresh'])
+                plt_image = draw_boxes(image, boxes, DETECTOR_CONFIG['model']['classes'])
+                cv2.imshow("CameraRGB1", plt_image)
                 cv2.waitKey(1)
 
             # Update pose and timestamp
