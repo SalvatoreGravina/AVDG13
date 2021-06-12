@@ -40,12 +40,14 @@ from carla.planner.city_track import CityTrack
 from traffic_light_detection_module.yolo import YOLO, dummy_loss
 from traffic_light_detection_module.preprocessing import load_image_predict_from_numpy_array
 from traffic_light_detection_module.postprocessing import decode_netout, draw_boxes
+from traffic_light_detection_module.postprocessing import get_state
+
 
 
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 7        #  spawn index for player
+PLAYER_START_INDEX = 3        #  spawn index for player
 DESTINATION_INDEX = 15        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
@@ -836,6 +838,7 @@ def exec_waypoint_nav_demo(args):
                           obj_threshold=DETECTOR_CONFIG['model']['obj_thresh'],
                           nms_threshold=DETECTOR_CONFIG['model']['nms_thresh'])
                 plt_image = draw_boxes(image, boxes, DETECTOR_CONFIG['model']['classes'])
+                trafficlight_state = get_state(boxes, DETECTOR_CONFIG['model']['classes'])
                 cv2.imshow("CameraRGB0", plt_image)
                 cv2.waitKey(1)
             if camera1 is not None:
@@ -902,7 +905,7 @@ def exec_waypoint_nav_demo(args):
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
                 # Perform a state transition in the behavioural planner.
-                bp.transition_state(waypoints, ego_state, current_speed)
+                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)

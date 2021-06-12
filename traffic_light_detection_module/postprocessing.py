@@ -220,3 +220,11 @@ class BoundBox:
             self.score = self.classes[self.get_label()]
 
         return self.score
+
+def get_state(boxes, labels):
+
+    label = []
+    for box in boxes:
+        label.append((labels[box.get_label()], round(box.get_score(),4)))
+
+    return label

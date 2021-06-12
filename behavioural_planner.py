@@ -27,7 +27,7 @@ class BehaviouralPlanner:
         self._lookahead = lookahead
 
     # Handles state transitions and computes the goal state.
-    def transition_state(self, waypoints, ego_state, closed_loop_speed):
+    def transition_state(self, waypoints, ego_state, closed_loop_speed, trafficlight_state):
         """Handles state transitions and computes the goal state.  
         
         args:
@@ -90,6 +90,12 @@ class BehaviouralPlanner:
 
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
+
+            for detection in trafficlight_state:
+                if detection[0] == 'stop':
+                    print(detection[0])
+                    self._state = DECELERATE_TO_STOP
+                    print(self._state)
             
 
         # In this state, check if we have reached a complete stop. Use the
