@@ -45,8 +45,8 @@ from traffic_light_detection_module.postprocessing import decode_netout, draw_bo
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 15        #  spawn index for player
-DESTINATION_INDEX = 42        # Setting a Destination HERE
+PLAYER_START_INDEX = 7        #  spawn index for player
+DESTINATION_INDEX = 15        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
