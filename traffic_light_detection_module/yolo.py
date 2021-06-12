@@ -129,13 +129,13 @@ class YOLO(object):
         output = Lambda(lambda args: args[0])([output, self.true_boxes])
 
         self.model = Model([input_image, self.true_boxes], output)
-        self.model.summary()
+        #self.model.summary()
 
         """pretrained = load_model(config['model']['saved_model_name'], custom_objects={'custom_loss': self.custom_loss, 'tf': tf})
         self.model.get_layer('DetectionLayer').set_weights(
             pretrained.get_layer('DetectionLayer').get_weights())
         """
-        print(os.path.join(BASE_DIR, 'checkpoints',config['model']['saved_model_name']))
+
         self.model.load_weights(os.path.join(BASE_DIR, 'checkpoints',config['model']['saved_model_name']))
 
     def load_weights(self, model_path):
