@@ -47,12 +47,12 @@ from traffic_light_detection_module.postprocessing import get_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 3        #  spawn index for player
+PLAYER_START_INDEX = 1        #  spawn index for player
 DESTINATION_INDEX = 15        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
+SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -232,8 +232,8 @@ def make_carla_settings(args):
     camera0.set(FOV=camera_fov)
     camera1.set(FOV=camera_fov)
     # Adding camera to configuration 
-    settings.add_sensor(camera0)
-    settings.add_sensor(camera1)
+    #settings.add_sensor(camera0)
+    #settings.add_sensor(camera1)
 
     return settings
 
@@ -818,7 +818,7 @@ def exec_waypoint_nav_demo(args):
         prev_collision_other       = 0
 
 
-
+        lead_car_index = None
 
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
@@ -826,7 +826,8 @@ def exec_waypoint_nav_demo(args):
 
             # UPDATE HERE the obstacles list
             obstacles = []
-
+            # obtain traffic_light info
+            trafficlight_state = []
             # Obtain Lead Vehicle information.
             lead_car_pos    = []
             lead_car_length = []
@@ -844,13 +845,13 @@ def exec_waypoint_nav_demo(args):
                              agent.vehicle.transform.location.y])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
+
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(
                             [agent.pedestrian.transform.location.x,
                              agent.pedestrian.transform.location.y])
                     pedestrian_lenght.append(agent.pedestrian.bounding_box.extent.x)
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
-
 
             # SHOW IMAGE FROM CAMERA
             camera0 = sensor_data.get('CameraRGB0',None)
@@ -936,7 +937,16 @@ def exec_waypoint_nav_demo(args):
                 bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
 
                 # Check to see if we need to follow the lead vehicle.
-                bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
+                index = -1
+                if lead_car_index == None:
+                    for i in range(len(lead_car_pos)):
+                        index = bp.check_for_new_lead_vehicle(ego_state,lead_car_pos[i],i)
+                        if index != -1:
+                            lead_car_index = index
+                            print(lead_car_index)
+                            break
+                else:
+                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index])
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
@@ -962,10 +972,16 @@ def exec_waypoint_nav_demo(args):
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
                     desired_speed = bp._goal_state[2]
-                    lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
-                    decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
-                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, None, bp._follow_lead_vehicle)
 
+                    # If lead vehicle is present, save info
+                    if lead_car_index != None:
+                        lead_car_state = [lead_car_pos[lead_car_index][0], lead_car_pos[lead_car_index][1], lead_car_speed[lead_car_index]]
+                    else:
+                        lead_car_state = None
+
+                    decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
+                
+                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle)
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.
                         # This controller is similar to that developed in Course 1 of this
