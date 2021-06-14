@@ -23,7 +23,6 @@ from math import sin, cos, pi, tan, sqrt
 
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
-sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
 import live_plotter as lv   # Custom live plotting library
 from carla            import sensor
 from carla.client     import make_carla_client, VehicleControl
@@ -37,7 +36,8 @@ from carla.planner.city_track import CityTrack
 
 
 # Import nostri
-from traffic_light_detection_module.yolo import YOLO, dummy_loss
+sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
+from traffic_light_detection_module.yolo import YOLO
 from traffic_light_detection_module.preprocessing import load_image_predict_from_numpy_array
 from traffic_light_detection_module.postprocessing import decode_netout, draw_boxes
 from traffic_light_detection_module.postprocessing import get_state
@@ -121,9 +121,7 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 
-# detector config file
-with open('./traffic_light_detection_module/config.json') as config_buffer:
-        DETECTOR_CONFIG = json.loads(config_buffer.read())
+
 
 # Camera parameters
 camera_parameters = {}
@@ -792,8 +790,13 @@ def exec_waypoint_nav_demo(args):
         #############################################
         # Load detector
         #############################################
-        # Section to load and configure the detector
+        # Section to load and configure the detector module
 
+        # detector config file
+        with open('./traffic_light_detection_module/config.json') as config_buffer:
+            DETECTOR_CONFIG = json.loads(config_buffer.read())
+        
+        # detector model
         model = YOLO(config=DETECTOR_CONFIG)
 
         #############################################
