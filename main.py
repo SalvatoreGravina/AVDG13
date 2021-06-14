@@ -827,6 +827,31 @@ def exec_waypoint_nav_demo(args):
             # UPDATE HERE the obstacles list
             obstacles = []
 
+            # Obtain Lead Vehicle information.
+            lead_car_pos    = []
+            lead_car_length = []
+            lead_car_speed  = []
+            pedestrian_pos      = []
+            pedestrian_lenght   = []
+            pedestrian_speed    = []
+
+
+            for agent in measurement_data.non_player_agents:
+                agent_id = agent.id
+                if agent.HasField('vehicle'):
+                    lead_car_pos.append(
+                            [agent.vehicle.transform.location.x,
+                             agent.vehicle.transform.location.y])
+                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                    lead_car_speed.append(agent.vehicle.forward_speed)
+                if agent.HasField('pedestrian'):
+                    pedestrian_pos.append(
+                            [agent.pedestrian.transform.location.x,
+                             agent.pedestrian.transform.location.y])
+                    pedestrian_lenght.append(agent.pedestrian.bounding_box.extent.x)
+                    pedestrian_speed.append(agent.pedestrian.forward_speed)
+
+
             # SHOW IMAGE FROM CAMERA
             camera0 = sensor_data.get('CameraRGB0',None)
             camera1 = sensor_data.get('CameraRGB1',None)
@@ -910,6 +935,9 @@ def exec_waypoint_nav_demo(args):
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
 
+                # Check to see if we need to follow the lead vehicle.
+                bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
+
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
@@ -934,6 +962,7 @@ def exec_waypoint_nav_demo(args):
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
                     desired_speed = bp._goal_state[2]
+                    lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                     local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, None, bp._follow_lead_vehicle)
 
