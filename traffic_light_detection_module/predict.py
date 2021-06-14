@@ -1,10 +1,11 @@
 from keras.models import load_model
 import os
 import numpy as np
+import cv2
 
 from yolo import YOLO, dummy_loss
-from preprocessing import load_image_predict
-from postprocessing import decode_netout
+from preprocessing import load_image_predict, load_image_predict_from_numpy_array
+from postprocessing import decode_netout, draw_boxes, get_state
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,3 +36,16 @@ def predict_with_model_from_file(config, model, image_path):
                           obj_threshold=config['model']['obj_thresh'],
                           nms_threshold=config['model']['nms_thresh'])
     return boxes
+
+def predict_traffic_light_state(model,image, config):
+    image_to_detect = load_image_predict_from_numpy_array(image, config['model']['image_h'],config['model']['image_h'])
+    dummy_array = np.zeros((1, 1, 1, 1, config['model']['max_obj'], 4))
+    netout = model.model.predict([image_to_detect, dummy_array])[0]
+    boxes = decode_netout(netout=netout, anchors=config['model']['anchors'],
+            nb_class=config['model']['num_classes'],
+            obj_threshold=config['model']['obj_thresh'],
+            nms_threshold=config['model']['nms_thresh'])
+    plt_image = draw_boxes(image, boxes, config['model']['classes'])
+    trafficlight_state = get_state(boxes, config['model']['classes'])
+
+    return trafficlight_state, plt_image

@@ -156,7 +156,7 @@ class BehaviouralPlanner:
                          ...
                          [xn, yn, vn]]
                 example:
-                    waypoints[2][1]: 
+                    waypoints[2][1]:
                     returns the 3rd waypoint's y position
 
                     waypoints[5]:
@@ -199,7 +199,7 @@ class BehaviouralPlanner:
                 
     # Checks to see if we need to modify our velocity profile to accomodate the
     # lead vehicle.
-    def check_for_new_lead_vehicle(self, ego_state, lead_car_position, index):
+    def check_for_new_lead_vehicle(self, ego_state, lead_car_position):
         """Checks for lead vehicle within the proximity of the ego car, such
         that the ego car should begin to follow the lead vehicle.
 
@@ -211,37 +211,38 @@ class BehaviouralPlanner:
                     ego_open_loop_speed : open loop speed (m/s)
             lead_car_position: The [x, y] position of the lead vehicle.
                 Lengths are in meters, and it is in the global frame.
+            index: index of the current checked car
         sets:
             self._follow_lead_vehicle: Boolean flag on whether the ego vehicle
                 should follow (true) the lead car or not (false).
         """
         # Check lead car position delta vector relative to heading, as well as
         # distance, to determine if car should be followed.
+
         # Check to see if lead vehicle is within range, and is ahead of us.
         if not self._follow_lead_vehicle:
+
             # Compute the angle between the normalized vector between the lead vehicle
             # and ego vehicle position with the ego vehicle's heading vector.
-            lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
+            lead_car_delta_vector = [lead_car_position[0] - ego_state[0],
                                      lead_car_position[1] - ego_state[1]]
             lead_car_distance = np.linalg.norm(lead_car_delta_vector)
             # In this case, the car is too far away.   
             if lead_car_distance > self._follow_lead_vehicle_lookahead:
-                return -1
+                return
 
             lead_car_delta_vector = np.divide(lead_car_delta_vector, 
                                               lead_car_distance)
-            ego_heading_vector = [math.cos(ego_state[2]), 
+            ego_heading_vector = [math.cos(ego_state[2]),
                                   math.sin(ego_state[2])]
             # Check to see if the relative angle between the lead vehicle and the ego
             # vehicle lies within +/- 45 degrees of the ego vehicle's heading.
             if np.dot(lead_car_delta_vector, 
                       ego_heading_vector) < (1 / math.sqrt(2)):
-                return -1
+                return
 
             self._follow_lead_vehicle = True
 
-            return index
-        '''
         else:
             lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
                                      lead_car_position[1] - ego_state[1]]
@@ -259,7 +260,6 @@ class BehaviouralPlanner:
                 return
 
             self._follow_lead_vehicle = False
-        '''
 
     def check_for_lead_vehicle(self, ego_state, lead_car_position):
         """Check to see if the lead vehicle is still within the ego vehicle's
@@ -277,7 +277,7 @@ class BehaviouralPlanner:
             self._follow_lead_vehicle: Boolean flag on whether the ego vehicle
                 should follow (true) the lead car or not (false).
         """
-        lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
+        lead_car_delta_vector = [lead_car_position[0] - ego_state[0],
                                      lead_car_position[1] - ego_state[1]]
         lead_car_distance = np.linalg.norm(lead_car_delta_vector)
 

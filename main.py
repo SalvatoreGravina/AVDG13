@@ -38,9 +38,7 @@ from carla.planner.city_track import CityTrack
 # Import nostri
 sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
 from traffic_light_detection_module.yolo import YOLO
-from traffic_light_detection_module.preprocessing import load_image_predict_from_numpy_array
-from traffic_light_detection_module.postprocessing import decode_netout, draw_boxes
-from traffic_light_detection_module.postprocessing import get_state
+from traffic_light_detection_module.predict import predict_traffic_light_state
 
 
 
@@ -221,16 +219,20 @@ def make_carla_settings(args):
     # Camera RGB
     camera0 = Camera('CameraRGB0')
     camera1 = Camera('CameraRGB1')
+
     # set pixel Resolution: WIDTH * HEIGHT
     camera0.set_image_size(camera_width, camera_height)
     camera1.set_image_size(camera_width, camera_height)
+
     # set position X (front), Y (lateral), Z (height) relative to the car in meters
     # (0,0,0) is at center of baseline of car 
     camera0.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
     camera1.set_position(cam_x_pos, cam_y_pos-0.5, cam_height)
+
     # set field of view
     camera0.set(FOV=camera_fov)
     camera1.set(FOV=camera_fov)
+
     # Adding camera to configuration 
     #settings.add_sensor(camera0)
     #settings.add_sensor(camera1)
@@ -426,7 +428,7 @@ def exec_waypoint_nav_demo(args):
     """ Executes waypoint navigation demo.
     """
     with make_carla_client(args.host, args.port) as client:
-        print('Carla client connected.')
+        logging.info('Carla client connected.')
 
         settings = make_carla_settings(args)
 
@@ -443,7 +445,7 @@ def exec_waypoint_nav_demo(args):
         # Notify the server that we want to start the episode at the
         # player_start index. This function blocks until the server is ready
         # to start the episode.
-        print('Starting new episode at %r...' % scene.map_name)
+        logging.info('Starting new episode at %r...' % scene.map_name)
         client.start_episode(player_start)
 
         #############################################
@@ -796,7 +798,7 @@ def exec_waypoint_nav_demo(args):
         with open('./traffic_light_detection_module/config.json') as config_buffer:
             DETECTOR_CONFIG = json.loads(config_buffer.read())
         
-        # detector model
+        # Detector loading
         model = YOLO(config=DETECTOR_CONFIG)
 
         #############################################
@@ -817,7 +819,7 @@ def exec_waypoint_nav_demo(args):
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
 
-
+        # Initialize index for lead car
         lead_car_index = None
 
         for frame in range(TOTAL_EPISODE_FRAMES):
@@ -828,6 +830,7 @@ def exec_waypoint_nav_demo(args):
             obstacles = []
             # obtain traffic_light info
             trafficlight_state = []
+
             # Obtain Lead Vehicle information.
             lead_car_pos    = []
             lead_car_length = []
@@ -859,27 +862,12 @@ def exec_waypoint_nav_demo(args):
 
             if camera0 is not None:
                 image = to_bgra_array(camera0)
-                image_to_detect = load_image_predict_from_numpy_array(image, DETECTOR_CONFIG['model']['image_h'], DETECTOR_CONFIG['model']['image_w'])
-                dummy_array = np.zeros((1, 1, 1, 1, DETECTOR_CONFIG['model']['max_obj'], 4))
-                netout = model.model.predict([image_to_detect, dummy_array])[0]
-                boxes = decode_netout(netout=netout, anchors=DETECTOR_CONFIG['model']['anchors'],
-                          nb_class=DETECTOR_CONFIG['model']['num_classes'],
-                          obj_threshold=DETECTOR_CONFIG['model']['obj_thresh'],
-                          nms_threshold=DETECTOR_CONFIG['model']['nms_thresh'])
-                plt_image = draw_boxes(image, boxes, DETECTOR_CONFIG['model']['classes'])
-                trafficlight_state = get_state(boxes, DETECTOR_CONFIG['model']['classes'])
+                trafficlight_state[0], plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
                 cv2.imshow("CameraRGB0", plt_image)
                 cv2.waitKey(1)
             if camera1 is not None:
                 image = to_bgra_array(camera1)
-                image_to_detect = load_image_predict_from_numpy_array(image, DETECTOR_CONFIG['model']['image_h'], DETECTOR_CONFIG['model']['image_w'])
-                dummy_array = np.zeros((1, 1, 1, 1, DETECTOR_CONFIG['model']['max_obj'], 4))
-                netout = model.model.predict([image_to_detect, dummy_array])[0]
-                boxes = decode_netout(netout=netout, anchors=DETECTOR_CONFIG['model']['anchors'],
-                          nb_class=DETECTOR_CONFIG['model']['num_classes'],
-                          obj_threshold=DETECTOR_CONFIG['model']['obj_thresh'],
-                          nms_threshold=DETECTOR_CONFIG['model']['nms_thresh'])
-                plt_image = draw_boxes(image, boxes, DETECTOR_CONFIG['model']['classes'])
+                trafficlight_state[1], plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
                 cv2.imshow("CameraRGB1", plt_image)
                 cv2.waitKey(1)
 
@@ -936,14 +924,12 @@ def exec_waypoint_nav_demo(args):
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
 
-                # Check to see if we need to follow the lead vehicle.
-                index = -1
-                if lead_car_index == None:
+                # Check if we need to follow a lead vehicle.
+                if not bp._follow_lead_vehicle:
                     for i in range(len(lead_car_pos)):
-                        index = bp.check_for_new_lead_vehicle(ego_state,lead_car_pos[i],i)
-                        if index != -1:
-                            lead_car_index = index
-                            print(lead_car_index)
+                        bp.check_for_new_lead_vehicle(ego_state,lead_car_pos[i])
+                        if bp._follow_lead_vehicle:
+                            lead_car_index = i
                             break
                 else:
                     bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index])
@@ -982,6 +968,7 @@ def exec_waypoint_nav_demo(args):
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 
                     local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle)
+                    
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.
                         # This controller is similar to that developed in Course 1 of this
