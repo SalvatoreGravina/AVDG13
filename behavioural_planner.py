@@ -22,7 +22,6 @@ class BehaviouralPlanner:
         self._obstacle_on_lane              = False
         self._goal_state                    = [0.0, 0.0, 0.0]
         self._goal_index                    = 0
-        self._stop_count                    = 0
         self._lookahead_collision_index     = 0
     
     def set_lookahead(self, lookahead):
@@ -95,6 +94,7 @@ class BehaviouralPlanner:
 
             for detection in trafficlight_state:
                 if detection[0] == 'stop':
+                    print('stop')
                     self._state = DECELERATE_TO_STOP
             
 
@@ -106,7 +106,6 @@ class BehaviouralPlanner:
             #print("DECELERATE_TO_STOP")
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
-                self._stop_count = 0
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -134,7 +133,10 @@ class BehaviouralPlanner:
             
             #if not stop_sign_found: self._state = FOLLOW_LANE
 
-            self._state = FOLLOW_LANE
+            for detection in trafficlight_state:
+                if detection[0] == 'go':
+                    print('go')
+                    self._state = FOLLOW_LANE
                 
         else:
             raise ValueError('Invalid state value.')

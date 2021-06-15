@@ -234,7 +234,7 @@ def make_carla_settings(args):
     camera1.set(FOV=camera_fov)
 
     # Adding camera to configuration 
-    #settings.add_sensor(camera0)
+    settings.add_sensor(camera0)
     #settings.add_sensor(camera1)
 
     return settings
@@ -859,19 +859,14 @@ def exec_waypoint_nav_demo(args):
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
 
             # SHOW IMAGE FROM CAMERA
-            camera0 = sensor_data.get('CameraRGB0',None)
-            camera1 = sensor_data.get('CameraRGB1',None)
+            #camera1 = sensor_data.get('CameraRGB1',None)
 
-            if camera0 is not None:
-                image = to_bgra_array(camera0)
-                trafficlight_state[0], plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
-                cv2.imshow("CameraRGB0", plt_image)
-                cv2.waitKey(1)
-            if camera1 is not None:
-                image = to_bgra_array(camera1)
-                trafficlight_state[1], plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
-                cv2.imshow("CameraRGB1", plt_image)
-                cv2.waitKey(1)
+
+            #if camera1 is not None:
+            #    image = to_bgra_array(camera1)
+            #    trafficlight_state[1], plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+            #    cv2.imshow("CameraRGB1", plt_image)
+            #    cv2.waitKey(1)
 
             # Update pose and timestamp
             prev_timestamp = current_timestamp
@@ -913,6 +908,18 @@ def exec_waypoint_nav_demo(args):
             # to be operating at a frequency that is a division to the 
             # simulation frequency.
             if frame % LP_FREQUENCY_DIVISOR == 0:
+
+                
+                if frame % (LP_FREQUENCY_DIVISOR * 5) == 0:
+
+                    camera0 = sensor_data.get('CameraRGB0',None)
+
+                    if camera0 is not None:
+                        image = to_bgra_array(camera0)
+                        trafficlight_state, plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+                        cv2.imshow("CameraRGB0", plt_image)
+                        cv2.waitKey(1)
+
                 # Compute open loop speed estimate.
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
