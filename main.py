@@ -937,6 +937,8 @@ def exec_waypoint_nav_demo(args):
                 else:
                     bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index], lead_car_pos_prec[-20][lead_car_index])
                 lead_car_pos_prec.append(lead_car_pos)
+                if not bp._follow_lead_vehicle:
+                    lead_car_index = None
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
