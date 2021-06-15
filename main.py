@@ -822,6 +822,8 @@ def exec_waypoint_nav_demo(args):
         # Initialize index for lead car
         lead_car_index = None
 
+        lead_car_pos_prec = []
+
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
@@ -890,7 +892,7 @@ def exec_waypoint_nav_demo(args):
             y_history.append(current_y)
             yaw_history.append(current_yaw)
             speed_history.append(current_speed)
-            time_history.append(current_timestamp) 
+            time_history.append(current_timestamp)
 
             # Store collision history
             collided_flag,\
@@ -926,13 +928,15 @@ def exec_waypoint_nav_demo(args):
 
                 # Check if we need to follow a lead vehicle.
                 if not bp._follow_lead_vehicle:
-                    for i in range(len(lead_car_pos)):
-                        bp.check_for_new_lead_vehicle(ego_state,lead_car_pos[i])
-                        if bp._follow_lead_vehicle:
-                            lead_car_index = i
-                            break
+                    if len(lead_car_pos_prec) > 20:
+                        for i in range(len(lead_car_pos)):
+                            bp.check_for_lead_vehicle(ego_state,lead_car_pos[i], lead_car_pos_prec[-20][i])
+                            if bp._follow_lead_vehicle:
+                                lead_car_index = i
+                                break
                 else:
-                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index])
+                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index], lead_car_pos_prec[-20][lead_car_index])
+                lead_car_pos_prec.append(lead_car_pos)
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
