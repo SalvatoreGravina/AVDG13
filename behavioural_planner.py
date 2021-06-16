@@ -92,7 +92,7 @@ class BehaviouralPlanner:
             self._goal_state = waypoints[goal_index]
 
             for detection in trafficlight_state:
-                if detection[0] == 'stop':
+                if detection[0] == 'stop' and detection[1]>0.50:
                     print('stop')
                     self._goal_state[2] = 0
                     self._state = DECELERATE_TO_STOP
@@ -110,7 +110,7 @@ class BehaviouralPlanner:
                 logging.info('passaggio a STAY_STOPPED')
             
             for detection in trafficlight_state:
-                if detection[0] == 'go':
+                if detection[0] == 'go' and detection[1]>0.50:
                     print('go')
                     self._state = FOLLOW_LANE
                     logging.info('passaggio a FOLLOW_LANE')
@@ -126,9 +126,8 @@ class BehaviouralPlanner:
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
             for detection in trafficlight_state:
-                if detection[0] == 'go':
+                if detection[0] == 'go' and detection[1]>0.50:
                     print('go')
-
                     closest_len, closest_index = get_closest_index(waypoints, ego_state)
                     goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                     while waypoints[goal_index][2] <= 0.1: goal_index += 1
