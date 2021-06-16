@@ -854,7 +854,7 @@ def exec_waypoint_nav_demo(args):
                     lead_car_pos.append(
                             [agent.vehicle.transform.location.x,
                              agent.vehicle.transform.location.y,
-                             agent.vehicle.transform.rotation])
+                             agent.vehicle.transform.rotation.yaw])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
 
@@ -864,7 +864,6 @@ def exec_waypoint_nav_demo(args):
                              agent.pedestrian.transform.location.y])
                     pedestrian_lenght.append(agent.pedestrian.bounding_box.extent.x)
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
-            print(lead_car_pos[2][2])
             # SHOW IMAGE FROM CAMERA
             #camera1 = sensor_data.get('CameraRGB1',None)
 
