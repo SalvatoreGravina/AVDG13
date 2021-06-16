@@ -13,7 +13,7 @@ STOP_THRESHOLD = 0.02
 STOP_COUNTS = 10
 
 class BehaviouralPlanner:
-    def __init__(self, lookahead, lead_vehicle_lookahead):
+    def __init__(self, lookahead, lead_vehicle_lookahead, waypoints_intersections):
         self._lookahead                     = lookahead
         self._follow_lead_vehicle_lookahead = lead_vehicle_lookahead
         self._state                         = FOLLOW_LANE
@@ -22,6 +22,7 @@ class BehaviouralPlanner:
         self._goal_state                    = [0.0, 0.0, 0.0]
         self._goal_index                    = 0
         self._lookahead_collision_index     = 0
+        self._waypoints_intersections       = waypoints_intersections 
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead

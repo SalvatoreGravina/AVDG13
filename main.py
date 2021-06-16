@@ -550,13 +550,13 @@ def exec_waypoint_nav_demo(args):
         destination = mission_planner.project_node(destination_pos)
 
         waypoints = []
+        waypoints_intersections = []
         waypoints_route = mission_planner.compute_route(source, source_ori, destination, destination_ori)
         desired_speed = 5.0
         turn_speed    = 2.5
 
         intersection_nodes = mission_planner.get_intersection_nodes()
         intersection_pair = []
-        intersection_index = []
         turn_cooldown = 0
         prev_x = False
         prev_y = False
@@ -578,9 +578,6 @@ def exec_waypoint_nav_demo(args):
             prev_y = abs(dy) > 0.1
 
             if point in intersection_nodes:
-
-                # list of intersection waypoints
-                intersection_index.append(point)
 
                 prev_start_intersection = mission_planner._map.convert_to_world(waypoints_route[i-2])
                 center_intersection = mission_planner._map.convert_to_world(waypoints_route[i])
@@ -651,6 +648,7 @@ def exec_waypoint_nav_demo(args):
                         waypoint_on_lane[2] = turn_speed
 
                         waypoints.append(waypoint_on_lane)
+                        waypoints_intersections.append(waypoint_on_lane)
                         theta += theta_step 
                     
                     turn_cooldown = 4
@@ -799,7 +797,7 @@ def exec_waypoint_nav_demo(args):
                                         SLOW_SPEED,
                                         STOP_LINE_BUFFER)
         bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE,
-                                                    LEAD_VEHICLE_LOOKAHEAD)
+                                                    LEAD_VEHICLE_LOOKAHEAD, waypoints_intersections)
         #############################################
         # Load detector
         #############################################
