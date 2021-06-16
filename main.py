@@ -45,8 +45,8 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 133        #  spawn index for player
-DESTINATION_INDEX = 105        # Setting a Destination HERE
+PLAYER_START_INDEX = 1        #  spawn index for player
+DESTINATION_INDEX = 15        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
@@ -99,7 +99,7 @@ CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
 CIRCLE_RADII           = [1.5, 1.5, 1.5]  # m
 TIME_GAP               = 1.0              # s
 PATH_SELECT_WEIGHT     = 10
-A_MAX                  = 1.5              # m/s^2
+A_MAX                  = 2.5              # m/s^2
 SLOW_SPEED             = 2.0              # m/s
 STOP_LINE_BUFFER       = 3.5              # m
 LEAD_VEHICLE_LOOKAHEAD = 20.0             # m
@@ -556,6 +556,7 @@ def exec_waypoint_nav_demo(args):
 
         intersection_nodes = mission_planner.get_intersection_nodes()
         intersection_pair = []
+        intersection_index = []
         turn_cooldown = 0
         prev_x = False
         prev_y = False
@@ -576,7 +577,11 @@ def exec_waypoint_nav_demo(args):
             prev_x = abs(dx) > 0.1
             prev_y = abs(dy) > 0.1
 
-            if point in intersection_nodes:                
+            if point in intersection_nodes:
+
+                # list of intersection waypoints
+                intersection_index.append(point)
+
                 prev_start_intersection = mission_planner._map.convert_to_world(waypoints_route[i-2])
                 center_intersection = mission_planner._map.convert_to_world(waypoints_route[i])
 
