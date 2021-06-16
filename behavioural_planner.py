@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
+import logging
 import numpy as np
 import math
-
-from numpy.core.fromnumeric import product
 
 # State machine states
 FOLLOW_LANE = 0
@@ -23,7 +22,7 @@ class BehaviouralPlanner:
         self._goal_state                    = [0.0, 0.0, 0.0]
         self._goal_index                    = 0
         self._lookahead_collision_index     = 0
-    
+
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
 
@@ -95,7 +94,9 @@ class BehaviouralPlanner:
             for detection in trafficlight_state:
                 if detection[0] == 'stop':
                     print('stop')
+                    self._goal_state[2] = 0
                     self._state = DECELERATE_TO_STOP
+                    logging.info('passaggio a DECELERATE_TO_STOP')
             
 
         # In this state, check if we have reached a complete stop. Use the
@@ -106,6 +107,13 @@ class BehaviouralPlanner:
             #print("DECELERATE_TO_STOP")
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
+                logging.info('passaggio a STAY_STOPPED')
+            
+            for detection in trafficlight_state:
+                if detection[0] == 'go':
+                    print('go')
+                    self._state = FOLLOW_LANE
+                    logging.info('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -114,30 +122,29 @@ class BehaviouralPlanner:
             #print("STAY_STOPPED")
             # We have stayed stopped for the required number of cycles.
             # Allow the ego vehicle to leave the stop sign. Once it has
-            # passed the stop sign, return to lane following.
+            # passed the stop sign, return to lane following
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
-            closest_len, closest_index = get_closest_index(waypoints, ego_state)
-            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-            while waypoints[goal_index][2] <= 0.1: goal_index += 1
-
-            # We've stopped for the required amount of time, so the new goal 
-            # index for the stop line is not relevant. Use the goal index
-            # that is the lookahead distance away. 
-                            
-            self._goal_index = goal_index
-            self._goal_state = waypoints[goal_index]
-
-            # If the stop sign is no longer along our path, we can now
-            # transition back to our lane following state.
-            
-            #if not stop_sign_found: self._state = FOLLOW_LANE
-
             for detection in trafficlight_state:
                 if detection[0] == 'go':
                     print('go')
+
+                    closest_len, closest_index = get_closest_index(waypoints, ego_state)
+                    goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                    while waypoints[goal_index][2] <= 0.1: goal_index += 1
+                    self._goal_index = goal_index
+                    self._goal_state = waypoints[goal_index]
                     self._state = FOLLOW_LANE
-                
+                    logging.info('passaggio a FOLLOW_LANE')                           
+                    
+
+            # If the stop sign is no longer along our path, we can now
+            # transition back to our lane following state.
+                    
+            #if not stop_sign_found: self._state = FOLLOW_LANE
+
+
+
         else:
             raise ValueError('Invalid state value.')
 
@@ -200,7 +207,7 @@ class BehaviouralPlanner:
             wp_index += 1
 
         return wp_index % len(waypoints)
-                
+
     # Checks to see if we need to modify our velocity profile to accomodate the
     # lead vehicle.
     def check_for_lead_vehicle(self, ego_state, lead_car_position, lead_car_position_prec):
