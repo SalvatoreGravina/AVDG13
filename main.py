@@ -14,11 +14,11 @@ import csv
 import matplotlib.pyplot as plt
 from numpy.core.defchararray import decode, index
 import controller2d
-import configparser 
+import configparser
 import local_planner
 import behavioural_planner
 import cv2
-import json 
+import json
 from math import sin, cos, pi, tan, sqrt
 
 # Script level imports
@@ -45,8 +45,8 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 1        #  spawn index for player
-DESTINATION_INDEX = 15        # Setting a Destination HERE
+PLAYER_START_INDEX = 133        #  spawn index for player
+DESTINATION_INDEX = 105        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
@@ -99,7 +99,7 @@ CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
 CIRCLE_RADII           = [1.5, 1.5, 1.5]  # m
 TIME_GAP               = 1.0              # s
 PATH_SELECT_WEIGHT     = 10
-A_MAX                  = 2.5              # m/s^2
+A_MAX                  = 1.5              # m/s^2
 SLOW_SPEED             = 2.0              # m/s
 STOP_LINE_BUFFER       = 3.5              # m
 LEAD_VEHICLE_LOOKAHEAD = 20.0             # m
@@ -213,6 +213,9 @@ def make_carla_settings(args):
     camera_width = camera_parameters['width']
     camera_height = camera_parameters['height']
     camera_fov = camera_parameters['fov']
+    camera_roll = 0
+    camera_pitch = 10
+    camera_yaw = 0
 
     # Declare here your sensors
 
@@ -228,6 +231,9 @@ def make_carla_settings(args):
     # (0,0,0) is at center of baseline of car 
     camera0.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
     camera1.set_position(cam_x_pos, cam_y_pos-0.5, cam_height)
+
+    # set orientation
+    camera0.set_rotation(camera_yaw, camera_pitch, camera_roll)
 
     # set field of view
     camera0.set(FOV=camera_fov)
@@ -847,7 +853,8 @@ def exec_waypoint_nav_demo(args):
                 if agent.HasField('vehicle'):
                     lead_car_pos.append(
                             [agent.vehicle.transform.location.x,
-                             agent.vehicle.transform.location.y])
+                             agent.vehicle.transform.location.y,
+                             agent.vehicle.transform.rotation])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
 
@@ -857,7 +864,7 @@ def exec_waypoint_nav_demo(args):
                              agent.pedestrian.transform.location.y])
                     pedestrian_lenght.append(agent.pedestrian.bounding_box.extent.x)
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
-
+            print(lead_car_pos[2][2])
             # SHOW IMAGE FROM CAMERA
             #camera1 = sensor_data.get('CameraRGB1',None)
 
