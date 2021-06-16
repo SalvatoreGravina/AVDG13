@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 from math import sin, cos, pi, sqrt
+import logging
 
 class VelocityPlanner:
     def __init__(self, time_gap, a_max, slow_speed, stop_line_buffer):
@@ -25,7 +26,7 @@ class VelocityPlanner:
         for i in range(len(self._prev_trajectory)-1):
             distance_step = np.linalg.norm(np.subtract(self._prev_trajectory[i+1][0:2], 
                                                        self._prev_trajectory[i][0:2]))
-            velocity = self._prev_trajectory[i][2]
+            velocity = max(self._prev_trajectory[i][2], 0.00001)
             time_delta = distance_step / velocity
            
             # If time_delta exceeds the remaining time in our simulation timestep, 
