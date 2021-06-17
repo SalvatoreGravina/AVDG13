@@ -1065,6 +1065,11 @@ def exec_waypoint_nav_demo(args):
 
                     trajectory_fig.roll("obstacles_points", x, y)
 
+                if lead_car_state != None:    # If there exists a lead car, plot it
+                    trajectory_fig.roll("leadcar", lead_car_state[0], lead_car_state[1])
+                else :
+                    trajectory_fig.roll("leadcar", 0, 0)
+
                 
                 forward_speed_fig.roll("forward_speed", 
                                        current_timestamp, 
