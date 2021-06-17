@@ -46,7 +46,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
 PLAYER_START_INDEX = 1        #  spawn index for player
-DESTINATION_INDEX = 15        # Setting a Destination HERE
+DESTINATION_INDEX = 15       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
@@ -831,8 +831,6 @@ def exec_waypoint_nav_demo(args):
 
         # Initialize index for lead car
         lead_car_index = None
-
-        lead_car_pos_prec = []
         
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
@@ -858,7 +856,7 @@ def exec_waypoint_nav_demo(args):
                     lead_car_pos.append(
                             [agent.vehicle.transform.location.x,
                              agent.vehicle.transform.location.y,
-                             agent.vehicle.transform.rotation.yaw])
+                             round(math.radians(agent.vehicle.transform.rotation.yaw), 4)])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
 
@@ -929,7 +927,7 @@ def exec_waypoint_nav_demo(args):
                         trafficlight_state, plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
                         cv2.imshow("CameraRGB0", plt_image)
                         cv2.waitKey(1)
-
+                
                 # Compute open loop speed estimate.
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
@@ -945,15 +943,13 @@ def exec_waypoint_nav_demo(args):
 
                 # Check if we need to follow a lead vehicle.
                 if not bp._follow_lead_vehicle:
-                    if len(lead_car_pos_prec) > 20:
-                        for i in range(len(lead_car_pos)):
-                            bp.check_for_lead_vehicle(ego_state,lead_car_pos[i], lead_car_pos_prec[-20][i])
-                            if bp._follow_lead_vehicle:
-                                lead_car_index = i
-                                break
+                    for i in range(len(lead_car_pos)):
+                        bp.check_for_lead_vehicle(ego_state,lead_car_pos[i])
+                        if bp._follow_lead_vehicle:
+                            lead_car_index = i
+                            break
                 else:
-                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index], lead_car_pos_prec[-20][lead_car_index])
-                lead_car_pos_prec.append(lead_car_pos)
+                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[lead_car_index])
                 if not bp._follow_lead_vehicle:
                     lead_car_index = None
 

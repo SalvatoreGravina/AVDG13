@@ -222,7 +222,7 @@ class BehaviouralPlanner:
 
     # Checks to see if we need to modify our velocity profile to accomodate the
     # lead vehicle.
-    def check_for_lead_vehicle(self, ego_state, lead_car_position, lead_car_position_prec):
+    def check_for_lead_vehicle(self, ego_state, lead_car_position):
         """Checks for lead vehicle within the proximity of the ego car, such
         that the ego car should begin to follow the lead vehicle.
 
@@ -249,29 +249,25 @@ class BehaviouralPlanner:
             # and ego vehicle position with the ego vehicle's heading vector.
             lead_car_delta_vector = [lead_car_position[0] - ego_state[0],
                                      lead_car_position[1] - ego_state[1]]
-
-            lead_car_delta_vector_prec = [lead_car_position_prec[0] - ego_state[0],
-                                          lead_car_position_prec[1] - ego_state[1]]
         
             lead_car_distance = np.linalg.norm(lead_car_delta_vector)
-            lead_car_distance_prec = np.linalg.norm(lead_car_delta_vector_prec)
             # In this case, the car is too far away.   
             if lead_car_distance > self._follow_lead_vehicle_lookahead:
                 return
 
             lead_car_delta_vector = np.divide(lead_car_delta_vector, lead_car_distance)
-            lead_car_delta_vector_prec = np.divide(lead_car_delta_vector_prec, lead_car_distance_prec)
 
             ego_heading_vector = [math.cos(ego_state[2]),
                                   math.sin(ego_state[2])]
             # Check to see if the relative angle between the lead vehicle and the ego
             # vehicle lies within +/- 15 degrees of the ego vehicle's heading.
-            if np.dot(lead_car_delta_vector, ego_heading_vector) < (0.99):
+            if np.dot(lead_car_delta_vector, ego_heading_vector) < (1 / math.sqrt(2)):
                 return
 
-            if abs(np.dot(lead_car_delta_vector, lead_car_delta_vector_prec) - 1) > 0.001:
+            # Check if the vehicle are in the same orientations
+            if abs(lead_car_position[2] - ego_state[2]) > math.pi / 8:
                 return
-            
+
             self._follow_lead_vehicle = True
 
         else:
@@ -287,7 +283,7 @@ class BehaviouralPlanner:
             # frame of view.
             lead_car_delta_vector = np.divide(lead_car_delta_vector, lead_car_distance)
             ego_heading_vector = [math.cos(ego_state[2]), math.sin(ego_state[2])]
-            if np.dot(lead_car_delta_vector, ego_heading_vector) > (0.99):
+            if np.dot(lead_car_delta_vector, ego_heading_vector) > (1 / math.sqrt(2)):
                 return
 
             self._follow_lead_vehicle = False
