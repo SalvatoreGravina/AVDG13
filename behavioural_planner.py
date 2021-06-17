@@ -22,7 +22,8 @@ class BehaviouralPlanner:
         self._goal_state                    = [0.0, 0.0, 0.0]
         self._goal_index                    = 0
         self._lookahead_collision_index     = 0
-        self._waypoints_intersections       = waypoints_intersections 
+        self._waypoints_intersections       = waypoints_intersections
+        self._detection_state               = False
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -92,8 +93,13 @@ class BehaviouralPlanner:
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
 
+            if self._goal_state in self._waypoints_intersections:
+                self._detection_state = True
+            else:
+                self._detection_state = False
+
             for detection in trafficlight_state:
-                if detection[0] == 'stop' and detection[1]>0.50:
+                if detection[0] == 'stop' and detection[1]>0.40:
                     print('stop')
                     self._goal_state[2] = 0
                     self._state = DECELERATE_TO_STOP

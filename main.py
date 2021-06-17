@@ -667,6 +667,7 @@ def exec_waypoint_nav_demo(args):
 
                 previuos_waypoint = waypoint
 
+        waypoints_intersections = np.array(waypoints_intersections)
         waypoints = np.array(waypoints)
         #############################################
         # Controller 2D Class Declaration
@@ -832,7 +833,7 @@ def exec_waypoint_nav_demo(args):
         lead_car_index = None
 
         lead_car_pos_prec = []
-
+        
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
@@ -923,7 +924,7 @@ def exec_waypoint_nav_demo(args):
 
                     camera0 = sensor_data.get('CameraRGB0',None)
 
-                    if camera0 is not None:
+                    if camera0 is not None and bp._detection_state == True:
                         image = to_bgra_array(camera0)
                         trafficlight_state, plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
                         cv2.imshow("CameraRGB0", plt_image)
