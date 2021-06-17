@@ -19,6 +19,7 @@ class BehaviouralPlanner:
         self._state                         = FOLLOW_LANE
         self._follow_lead_vehicle           = False
         self._obstacle_on_lane              = False
+        self._goal_state_prec               = [0.0, 0.0, 0.0]
         self._goal_state                    = [0.0, 0.0, 0.0]
         self._goal_index                    = 0
         self._lookahead_collision_index     = 0
@@ -91,6 +92,7 @@ class BehaviouralPlanner:
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
             self._goal_index = goal_index
+            self._goal_state_prec = waypoints[goal_index-1]
             self._goal_state = waypoints[goal_index]
 
             if self._goal_state in self._waypoints_intersections:
@@ -100,6 +102,12 @@ class BehaviouralPlanner:
 
             for detection in trafficlight_state:
                 if detection[0] == 'stop' and detection[1]>0.40:
+                    #self._goal_state = self.generate_tl_waypoint(self._goal_state, self._goal_state_prec)
+                    print("goal state: ", self._goal_state)
+                    print("goal state prec: ", self._goal_state_prec)
+                    #self._goal_state = [(self._goal_state[0]+self._goal_state_prec[0])/2, (self._goal_state[1]+self._goal_state_prec[1])/2, 0]
+                    self._goal_state = self._goal_state_prec
+                    print(self._goal_state)
                     print('stop')
                     self._goal_state[2] = 0
                     self._state = DECELERATE_TO_STOP
@@ -153,7 +161,24 @@ class BehaviouralPlanner:
 
         else:
             raise ValueError('Invalid state value.')
+    
+    #tra due punti passa una retta
+    def generate_tl_waypoint(self, goal_state, goal_state_prec):
+        
+        return tl_waypoint
 
+    def crea_retta(x1,y1,x2,y2):
+        if x1==x2 and y1==y2:
+            raise ValueError("Infinite rette")
+        elif x1==x2:
+            raise ValueError("Equazione nella forma x=q")
+        else:
+            m=float(y2-y1)/(x2-x1)
+            q=y1-(m*x1)
+        def retta(x):
+            return m*x+q
+        return retta
+    
     # Gets the goal index in the list of waypoints, based on the lookahead and
     # the current ego state. In particular, find the earliest waypoint that has accumulated
     # arc length (including closest_len) that is greater than or equal to self._lookahead.

@@ -48,7 +48,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 PLAYER_START_INDEX = 1        #  spawn index for player
 DESTINATION_INDEX = 15        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
-NUM_VEHICLES           = 30      # total number of vehicles to spawn
+NUM_VEHICLES           = 1      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -214,7 +214,7 @@ def make_carla_settings(args):
     camera_height = camera_parameters['height']
     camera_fov = camera_parameters['fov']
     camera_roll = 0
-    camera_pitch = 10
+    camera_pitch = 30
     camera_yaw = 0
 
     # Declare here your sensors
