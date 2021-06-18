@@ -19,18 +19,22 @@ class BehaviouralPlanner:
         self._state                         = FOLLOW_LANE
         self._follow_lead_vehicle           = False
         self._obstacle_on_lane              = False
-        self._goal_state_prec               = [0.0, 0.0, 0.0]
+        self._ego_state_prec                = [0.0, 0.0, 0.0, 0.0]
+        self._trafficlight_distance_prec    = 0
+        self._first_measure                 = False
         self._goal_state                    = [0.0, 0.0, 0.0]
         self._goal_index                    = 0
         self._lookahead_collision_index     = 0
         self._waypoints_intersections       = waypoints_intersections
         self._detection_state               = False
+        self._x                             = None
+        self._y                             = None
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
 
     # Handles state transitions and computes the goal state.
-    def transition_state(self, waypoints, ego_state, closed_loop_speed, trafficlight_state):
+    def transition_state(self, waypoints, ego_state, closed_loop_speed, trafficlight_state, trafficlight_distance):
         """Handles state transitions and computes the goal state.  
         
         args:
@@ -92,7 +96,6 @@ class BehaviouralPlanner:
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
             self._goal_index = goal_index
-            self._goal_state_prec = waypoints[goal_index-1]
             self._goal_state = waypoints[goal_index]
 
             if self._goal_state in self._waypoints_intersections:
@@ -101,16 +104,35 @@ class BehaviouralPlanner:
                 self._detection_state = False
 
             for detection in trafficlight_state:
-                if detection[0] == 'stop' and detection[1]>0.40:
-                    print("goal state: ", self._goal_state)
-                    print("goal state prec: ", self._goal_state_prec)
-                    self._goal_state = self._goal_state_prec
-                    print(self._goal_state)
-                    print('stop')
-                    self._goal_state[2] = 0
-                    self._state = DECELERATE_TO_STOP
-                    logging.info('passaggio a DECELERATE_TO_STOP')
-            
+                if detection[0] == 'stop' and detection[1]>0.30:
+                    print("stop")
+                    if self._first_measure == False:
+                        if trafficlight_distance < 10:
+                            self._ego_state_prec = ego_state
+                            self._trafficlight_distance_prec = trafficlight_distance
+                            self._first_measure = True
+                            print("prima misura")
+
+                    elif trafficlight_distance <10 :
+                        a_b = math.sqrt((ego_state[0] - self._ego_state_prec[0]) ** 2 + (ego_state[1] - self._ego_state_prec[1]) ** 2)
+                        b_c = trafficlight_distance
+                        a_c = self._trafficlight_distance_prec
+                        print("seconda misura")
+                        xp, yp = self.triangulate(a_b, b_c, a_c)
+                        x, y = self.coordinate_to_world(xp, yp, self._ego_state_prec[0], self._ego_state_prec[1], ego_state[2])
+                        print("x", x)
+                        print("y", y)
+                        print("realx", ego_state[0])
+                        print("realy", ego_state[1])
+                        self._x = x
+                        self._y = y
+                        self._state = DECELERATE_TO_STOP
+                        new_goal_state = self.projection(x, y, ego_state[0], ego_state[1], self._goal_state[0], self._goal_state[1])
+                        self._goal_state[0] = new_goal_state[0]
+                        self._goal_state[1] = new_goal_state[1]
+                        self._goal_state[2] = 0
+                        logging.info('passaggio a DECELERATE_TO_STOP')
+
 
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
@@ -126,6 +148,7 @@ class BehaviouralPlanner:
                 if detection[0] == 'go' and detection[1]>0.40:
                     print('go')
                     self._state = FOLLOW_LANE
+                    self._first_measure = False
                     logging.info('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if we have stayed stopped for at
@@ -159,6 +182,33 @@ class BehaviouralPlanner:
 
         else:
             raise ValueError('Invalid state value.')  
+
+    # Triangulate a point
+    def triangulate(self, AB, BC, AC):
+        print("ab", AB)
+        print("bc", BC)
+        print("ac", AC)
+        y = (AB ** 2 + AC ** 2 - BC ** 2) / (2 * AB)
+        x = math.sqrt(AC ** 2 - y ** 2)
+        
+        return x, y
+
+    def coordinate_to_world(self, xp, yp, Ox, Oy, R):
+        x = Ox + xp * math.cos(R) - yp * math.sin(R)
+        y = Oy + xp * math.sin(R) + yp * math.cos(R)
+        
+        return x, y
+
+    def projection(self, xp, yp, xa, ya, xb, yb):
+
+        p1 = np.array([xa, ya])
+        p2 = np.array([xb, yb])
+        p3 = np.array([xp, yp])
+        l2 = np.sum((p1-p2)**2)
+
+        t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
+
+        return p1 + t * (p2 - p1)
 
     # Gets the goal index in the list of waypoints, based on the lookahead and
     # the current ego state. In particular, find the earliest waypoint that has accumulated

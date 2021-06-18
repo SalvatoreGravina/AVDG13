@@ -9,6 +9,7 @@ import argparse
 import logging
 import time
 import math
+from warnings import catch_warnings
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
@@ -48,7 +49,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 PLAYER_START_INDEX = 1        #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
-NUM_VEHICLES           = 30      # total number of vehicles to spawn
+NUM_VEHICLES           = 1      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -129,6 +130,27 @@ camera_parameters['z'] = 1.3
 camera_parameters['width'] = 416  # default 200
 camera_parameters['height'] = 416 # default 200
 camera_parameters['fov'] = 90
+
+def distance_from_boxes(boxes, camera_depth):
+
+    try: 
+        xmin = int(boxes[0].xmin * 416)
+        ymin = int(boxes[0].ymin * 416)
+        xmax = int(boxes[0].xmax * 416)
+        ymax = int(boxes[0].ymax * 416)
+
+        depth_array = depth_to_array(camera_depth)
+
+        ymed = int((ymax - ymin) / 2)
+        y = ymed + ymin
+        xmed = int((xmax - xmin) / 2)
+        x = xmed + xmin
+
+        distance = depth_array[y][x] * 1000  # Consider depth in meters
+        return distance 
+
+    except: 
+        return 1000
 
 def rotate_x(angle):
     R = np.mat([[ 1,         0,           0],
@@ -223,25 +245,33 @@ def make_carla_settings(args):
     camera0 = Camera('CameraRGB0')
     camera1 = Camera('CameraRGB1')
 
+    # Camera Depth
+    camera2 = Camera('CameraDepth', PostProcessing = "Depth")
+
     # set pixel Resolution: WIDTH * HEIGHT
     camera0.set_image_size(camera_width, camera_height)
     camera1.set_image_size(camera_width, camera_height)
+    camera2.set_image_size(camera_width, camera_height)
 
     # set position X (front), Y (lateral), Z (height) relative to the car in meters
     # (0,0,0) is at center of baseline of car 
     camera0.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
     camera1.set_position(cam_x_pos, cam_y_pos-0.5, cam_height)
+    camera2.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
 
     # set orientation
     camera0.set_rotation(camera_yaw, camera_pitch, camera_roll)
+    camera2.set_rotation(camera_yaw, camera_pitch, camera_roll)
 
     # set field of view
     camera0.set(FOV=camera_fov)
     camera1.set(FOV=camera_fov)
+    camera2.set(FOV=camera_fov)
 
     # Adding camera to configuration 
     settings.add_sensor(camera0)
     #settings.add_sensor(camera1)
+    settings.add_sensor(camera2)
 
     return settings
 
@@ -735,6 +765,11 @@ def exec_waypoint_nav_demo(args):
                                  marker="s", color='g', markertext="Lead Car",
                                  marker_text_offset=1)
 
+        # Add trafficlight information
+        trajectory_fig.add_graph("trafficlight", window_size=1, 
+                                 marker="s", color='y', markertext="trafficlight",
+                                 marker_text_offset=1)
+
         # Add lookahead path
         trajectory_fig.add_graph("selected_path", 
                                  window_size=INTERP_MAX_POINTS_PLOT,
@@ -839,12 +874,14 @@ def exec_waypoint_nav_demo(args):
             # UPDATE HERE the obstacles list
             obstacles = []
             # obtain traffic_light info
-            trafficlight_state = []
+            trafficlight_state      = []
+            trafficlight_boxes      = []
+            trafficlight_distance   = []
 
             # Obtain Lead Vehicle information.
-            lead_car_pos    = []
-            lead_car_length = []
-            lead_car_speed  = []
+            lead_car_pos        = []
+            lead_car_length     = []
+            lead_car_speed      = []
             pedestrian_pos      = []
             pedestrian_lenght   = []
             pedestrian_speed    = []
@@ -924,10 +961,15 @@ def exec_waypoint_nav_demo(args):
 
                     if camera0 is not None and bp._detection_state == True:
                         image = to_bgra_array(camera0)
-                        trafficlight_state, plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+                        trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
                         cv2.imshow("CameraRGB0", plt_image)
                         cv2.waitKey(1)
-                
+
+                        camera2 = sensor_data.get('CameraDepth',None)
+
+                        if camera2 is not None:
+                            trafficlight_distance = distance_from_boxes(trafficlight_boxes, camera2)
+
                 # Compute open loop speed estimate.
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
@@ -939,7 +981,7 @@ def exec_waypoint_nav_demo(args):
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
                 # Perform a state transition in the behavioural planner.
-                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
+                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state, trafficlight_distance)
 
                 # Check if we need to follow a lead vehicle.
                 if not bp._follow_lead_vehicle:
@@ -1065,6 +1107,9 @@ def exec_waypoint_nav_demo(args):
                     trajectory_fig.roll("leadcar", lead_car_state[0], lead_car_state[1])
                 else :
                     trajectory_fig.roll("leadcar", 0, 0)
+
+                if bp._x != None: 
+                    trajectory_fig.roll("trafficlight", bp._x, bp._y)
 
                 
                 forward_speed_fig.roll("forward_speed", 

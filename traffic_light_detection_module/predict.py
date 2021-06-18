@@ -37,7 +37,7 @@ def predict_with_model_from_file(config, model, image_path):
                           nms_threshold=config['model']['nms_thresh'])
     return boxes
 
-def predict_traffic_light_state(model,image, config):
+def predict_traffic_light_state(model, image, config):
     image_to_detect = load_image_predict_from_numpy_array(image, config['model']['image_h'],config['model']['image_h'])
     dummy_array = np.zeros((1, 1, 1, 1, config['model']['max_obj'], 4))
     netout = model.model.predict([image_to_detect, dummy_array])[0]
@@ -48,4 +48,4 @@ def predict_traffic_light_state(model,image, config):
     plt_image = draw_boxes(image, boxes, config['model']['classes'])
     trafficlight_state = get_state(boxes, config['model']['classes'])
 
-    return trafficlight_state, plt_image
+    return trafficlight_state, plt_image, boxes
