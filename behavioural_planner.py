@@ -11,6 +11,8 @@ STAY_STOPPED = 2
 STOP_THRESHOLD = 0.02
 # Number of cycles before moving from stop sign.
 STOP_COUNTS = 10
+# distance threshold for depth camera
+DEPTH_THRESHOLD = 10
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead, waypoints_intersections):
@@ -27,8 +29,7 @@ class BehaviouralPlanner:
         self._lookahead_collision_index     = 0
         self._waypoints_intersections       = waypoints_intersections
         self._detection_state               = False
-        self._x                             = None
-        self._y                             = None
+        self._trafficlight_position         = [0.0,0.0]
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -105,32 +106,18 @@ class BehaviouralPlanner:
 
             for detection in trafficlight_state:
                 if detection[0] == 'stop' and detection[1]>0.30:
-                    print("stop")
+                    print("Identificato semaforo rosso")
                     if self._first_measure == False:
-                        if trafficlight_distance < 10:
+                        if trafficlight_distance < DEPTH_THRESHOLD: # treshold for depth camera
                             self._ego_state_prec = ego_state
                             self._trafficlight_distance_prec = trafficlight_distance
                             self._first_measure = True
-                            print("prima misura")
-
-                    elif trafficlight_distance <10 :
-                        a_b = math.sqrt((ego_state[0] - self._ego_state_prec[0]) ** 2 + (ego_state[1] - self._ego_state_prec[1]) ** 2)
-                        b_c = trafficlight_distance
-                        a_c = self._trafficlight_distance_prec
-                        print("seconda misura")
-                        xp, yp = self.triangulate(a_b, b_c, a_c)
-                        x, y = self.coordinate_to_world(xp, yp, self._ego_state_prec[0], self._ego_state_prec[1], ego_state[2])
-                        print("x", x)
-                        print("y", y)
-                        print("realx", ego_state[0])
-                        print("realy", ego_state[1])
-                        self._x = x
-                        self._y = y
+                            print("prima misura acquisita")
+                    elif trafficlight_distance < DEPTH_THRESHOLD:
+                        trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
+                        self._goal_state[0],self._goal_state[1], self._goal_state[2] = trafficlight_waypoint[0], trafficlight_waypoint[1], 0
+                        print(self._goal_state)
                         self._state = DECELERATE_TO_STOP
-                        new_goal_state = self.projection(x, y, ego_state[0], ego_state[1], self._goal_state[0], self._goal_state[1])
-                        self._goal_state[0] = new_goal_state[0]
-                        self._goal_state[1] = new_goal_state[1]
-                        self._goal_state[2] = 0
                         logging.info('passaggio a DECELERATE_TO_STOP')
 
 
@@ -182,28 +169,45 @@ class BehaviouralPlanner:
 
         else:
             raise ValueError('Invalid state value.')  
+ 
+    # Aggiungere descrizione chiatta
+    def get_trafficlight_waypoint(self, ego_state, trafficlight_distance, ego_state_prec, trafficlight_distance_prec, goal_state):
+        a_b = math.sqrt((ego_state[0] - ego_state_prec[0]) ** 2 + (ego_state[1] - ego_state_prec[1]) ** 2)
+        b_c = trafficlight_distance
+        a_c = trafficlight_distance_prec
+
+        xp, yp = self.triangulate(a_b, b_c, a_c)
+        x, y = self.coordinate_to_world(xp, yp, ego_state_prec[0], ego_state_prec[1], ego_state[2])
+
+        self._trafficlight_position[0] = x
+        self._trafficlight_position[1] = y
+        trafficlight_waypoint = self.projection(self._trafficlight_position, ego_state, goal_state)
+        return trafficlight_waypoint
+
+
 
     # Triangulate a point
     def triangulate(self, AB, BC, AC):
-        print("ab", AB)
-        print("bc", BC)
-        print("ac", AC)
+
         y = (AB ** 2 + AC ** 2 - BC ** 2) / (2 * AB)
         x = math.sqrt(AC ** 2 - y ** 2)
         
         return x, y
 
+    # transform coordinate to world frame
     def coordinate_to_world(self, xp, yp, Ox, Oy, R):
+
         x = Ox + xp * math.cos(R) - yp * math.sin(R)
         y = Oy + xp * math.sin(R) + yp * math.cos(R)
         
         return x, y
 
-    def projection(self, xp, yp, xa, ya, xb, yb):
+    # Project point on a straight line
+    def projection(self, project_point, a_point, b_point):
 
-        p1 = np.array([xa, ya])
-        p2 = np.array([xb, yb])
-        p3 = np.array([xp, yp])
+        p1 = np.array([a_point[0], a_point[1]])
+        p2 = np.array([b_point[0], b_point[1]])
+        p3 = np.array([project_point[0], project_point[1]])
         l2 = np.sum((p1-p2)**2)
 
         t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))

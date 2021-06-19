@@ -9,11 +9,7 @@ import argparse
 import logging
 import time
 import math
-from warnings import catch_warnings
 import numpy as np
-import csv
-import matplotlib.pyplot as plt
-from numpy.core.defchararray import decode, index
 import controller2d
 import configparser
 import local_planner
@@ -131,6 +127,7 @@ camera_parameters['width'] = 416  # default 200
 camera_parameters['height'] = 416 # default 200
 camera_parameters['fov'] = 90
 
+# Given the BB from detection and depth data, compute distance from camera
 def distance_from_boxes(boxes, camera_depth):
 
     try: 
@@ -147,7 +144,7 @@ def distance_from_boxes(boxes, camera_depth):
         x = xmed + xmin
 
         distance = depth_array[y][x] * 1000  # Consider depth in meters
-        return distance 
+        return distance
 
     except: 
         return 1000
@@ -878,7 +875,7 @@ def exec_waypoint_nav_demo(args):
             trafficlight_boxes      = []
             trafficlight_distance   = []
 
-            # Obtain Lead Vehicle information.
+            # Obtain AGENTS information.
             lead_car_pos        = []
             lead_car_length     = []
             lead_car_speed      = []
@@ -1108,8 +1105,10 @@ def exec_waypoint_nav_demo(args):
                 else :
                     trajectory_fig.roll("leadcar", 0, 0)
 
-                if bp._x != None: 
-                    trajectory_fig.roll("trafficlight", bp._x, bp._y)
+                if bp._trafficlight_position != None: 
+                    trajectory_fig.roll("trafficlight", bp._trafficlight_position[0], bp._trafficlight_position[1])
+                else :
+                    trajectory_fig.roll("trafficlight", 0, 0)
 
                 
                 forward_speed_fig.roll("forward_speed", 
