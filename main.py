@@ -42,7 +42,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 1        #  spawn index for player
+PLAYER_START_INDEX = 150        #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 1      # total number of vehicles to spawn
@@ -952,7 +952,7 @@ def exec_waypoint_nav_demo(args):
             if frame % LP_FREQUENCY_DIVISOR == 0:
 
                 
-                if frame % (LP_FREQUENCY_DIVISOR * 5) == 0:
+                if frame % (LP_FREQUENCY_DIVISOR * 2) == 0:
 
                     camera0 = sensor_data.get('CameraRGB0',None)
 

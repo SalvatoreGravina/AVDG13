@@ -16,20 +16,21 @@ DEPTH_THRESHOLD = 10
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead, waypoints_intersections):
-        self._lookahead                     = lookahead
-        self._follow_lead_vehicle_lookahead = lead_vehicle_lookahead
-        self._state                         = FOLLOW_LANE
-        self._follow_lead_vehicle           = False
-        self._obstacle_on_lane              = False
-        self._ego_state_prec                = [0.0, 0.0, 0.0, 0.0]
-        self._trafficlight_distance_prec    = 0
-        self._first_measure                 = False
-        self._goal_state                    = [0.0, 0.0, 0.0]
-        self._goal_index                    = 0
-        self._lookahead_collision_index     = 0
-        self._waypoints_intersections       = waypoints_intersections
-        self._detection_state               = False
-        self._trafficlight_position         = [0.0,0.0]
+        self._lookahead                      = lookahead
+        self._follow_lead_vehicle_lookahead  = lead_vehicle_lookahead
+        self._state                          = FOLLOW_LANE
+        self._follow_lead_vehicle            = False
+        self._obstacle_on_lane               = False
+        self._ego_state_prec                 = [0.0, 0.0, 0.0, 0.0]
+        self._trafficlight_distance_prec     = 0
+        self._first_measure                  = False
+        self._goal_state                     = [0.0, 0.0, 0.0]
+        self._goal_index                     = 0
+        self._lookahead_collision_index      = 0
+        self._waypoints_intersections        = waypoints_intersections
+        self._detection_state                = False
+        self._trafficlight_position          = [0.0,0.0]
+        self._trafficlight_position_acquired = False
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -86,6 +87,22 @@ class BehaviouralPlanner:
         # Make sure that get_closest_index() and get_goal_index() functions are
         # complete, and examine the check_for_stop_signs() function to
         # understand it.
+
+        #Valutare spostamento nel main
+        print("tlpa: ", self._trafficlight_position_acquired)
+        if self._trafficlight_position_acquired == False:
+            for detection in trafficlight_state:
+                if detection[1]>0.30:
+                    if self._first_measure == False:
+                        if trafficlight_distance < DEPTH_THRESHOLD: # treshold for depth camera
+                            self._ego_state_prec = ego_state
+                            self._trafficlight_distance_prec = trafficlight_distance
+                            self._first_measure = True
+                            print("prima misura acquisita")
+                    elif trafficlight_distance < DEPTH_THRESHOLD:
+                        trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
+                        self._trafficlight_position_acquired = True
+
         if self._state == FOLLOW_LANE:
             #print("FOLLOW_LANE")
             # First, find the closest index to the ego vehicle.
@@ -103,22 +120,14 @@ class BehaviouralPlanner:
                 self._detection_state = True
             else:
                 self._detection_state = False
+                self._trafficlight_position_acquired = False
 
             for detection in trafficlight_state:
-                if detection[0] == 'stop' and detection[1]>0.30:
+                if detection[0] == 'stop' and detection[1] > 0.50 and self._trafficlight_position_acquired == True :
                     print("Identificato semaforo rosso")
-                    if self._first_measure == False:
-                        if trafficlight_distance < DEPTH_THRESHOLD: # treshold for depth camera
-                            self._ego_state_prec = ego_state
-                            self._trafficlight_distance_prec = trafficlight_distance
-                            self._first_measure = True
-                            print("prima misura acquisita")
-                    elif trafficlight_distance < DEPTH_THRESHOLD:
-                        trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
-                        self._goal_state[0],self._goal_state[1], self._goal_state[2] = trafficlight_waypoint[0], trafficlight_waypoint[1], 0
-                        print(self._goal_state)
-                        self._state = DECELERATE_TO_STOP
-                        logging.info('passaggio a DECELERATE_TO_STOP')
+                    self._goal_state[0],self._goal_state[1], self._goal_state[2] = trafficlight_waypoint[0], trafficlight_waypoint[1], 0
+                    self._state = DECELERATE_TO_STOP
+                    logging.info('passaggio a DECELERATE_TO_STOP')
 
 
         # In this state, check if we have reached a complete stop. Use the
@@ -136,6 +145,7 @@ class BehaviouralPlanner:
                     print('go')
                     self._state = FOLLOW_LANE
                     self._first_measure = False
+                    self._detection_state = False
                     logging.info('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if we have stayed stopped for at
@@ -157,6 +167,8 @@ class BehaviouralPlanner:
                     self._goal_index = goal_index
                     self._goal_state = waypoints[goal_index]
                     self._state = FOLLOW_LANE
+                    self._first_measure = False
+                    self._detection_state = False
                     logging.info('passaggio a FOLLOW_LANE')                           
                     
 
