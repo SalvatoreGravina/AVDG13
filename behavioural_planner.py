@@ -25,12 +25,14 @@ class BehaviouralPlanner:
         self._trafficlight_distance_prec     = 0
         self._first_measure                  = False
         self._goal_state                     = [0.0, 0.0, 0.0]
+        self._goal_state_prec                = [0.0, 0.0, 0.0]
         self._goal_index                     = 0
         self._lookahead_collision_index      = 0
         self._waypoints_intersections        = waypoints_intersections
         self._detection_state                = False
         self._trafficlight_position          = [0.0,0.0]
         self._trafficlight_position_acquired = False
+        self._trafficlight_waypoint          = [0.0, 0.0, 0.0]
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -88,21 +90,7 @@ class BehaviouralPlanner:
         # complete, and examine the check_for_stop_signs() function to
         # understand it.
 
-        #Valutare spostamento nel main
-        print("tlpa: ", self._trafficlight_position_acquired)
-        if self._trafficlight_position_acquired == False:
-            for detection in trafficlight_state:
-                if detection[1]>0.30:
-                    if self._first_measure == False:
-                        if trafficlight_distance < DEPTH_THRESHOLD: # treshold for depth camera
-                            self._ego_state_prec = ego_state
-                            self._trafficlight_distance_prec = trafficlight_distance
-                            self._first_measure = True
-                            print("prima misura acquisita")
-                    elif trafficlight_distance < DEPTH_THRESHOLD:
-                        trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
-                        self._trafficlight_position_acquired = True
-                        print('tl position acquired')
+
 
         if self._state == FOLLOW_LANE:
             #print("FOLLOW_LANE")
@@ -122,12 +110,13 @@ class BehaviouralPlanner:
             else:
                 self._detection_state = False
                 self._trafficlight_position_acquired = False
-                print('punto attuale non incrocio')
+                #print('punto attuale non incrocio')
 
             for detection in trafficlight_state:
-                if detection[0] == 'stop' and detection[1] > 0.50 and self._trafficlight_position_acquired == True :
+                if detection[0] == 'stop' and detection[1] > 0.40 and self._trafficlight_position_acquired == True :
                     print("Identificato semaforo rosso")
-                    self._goal_state[0],self._goal_state[1], self._goal_state[2] = trafficlight_waypoint[0], trafficlight_waypoint[1], 0
+                    self._goal_state_prec = self._goal_state
+                    self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
                     self._state = DECELERATE_TO_STOP
                     logging.info('passaggio a DECELERATE_TO_STOP')
 
@@ -145,6 +134,7 @@ class BehaviouralPlanner:
             for detection in trafficlight_state:
                 if detection[0] == 'go' and detection[1]>0.40:
                     print('go')
+                    self._goal_state = self._goal_state_prec
                     self._state = FOLLOW_LANE
                     self._first_measure = False
                     self._detection_state = False
@@ -163,11 +153,10 @@ class BehaviouralPlanner:
             for detection in trafficlight_state:
                 if detection[0] == 'go' and detection[1]>0.40:
                     print('go')
-                    closest_len, closest_index = get_closest_index(waypoints, ego_state)
-                    goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                    while waypoints[goal_index][2] <= 0.1: goal_index += 1
-                    self._goal_index = goal_index
-                    self._goal_state = waypoints[goal_index]
+                    print("gs", self._goal_state)
+                    print("gsp", self._goal_state_prec)
+                    if self._goal_state != self._goal_state_prec:
+                        self._goal_state = self._goal_state_prec
                     self._state = FOLLOW_LANE
                     self._first_measure = False
                     self._detection_state = False
@@ -180,9 +169,31 @@ class BehaviouralPlanner:
             #if not stop_sign_found: self._state = FOLLOW_LANE
 
 
-
         else:
             raise ValueError('Invalid state value.')  
+
+        #Valutare spostamento nel main
+        print("rGs: ", self._goal_state)
+        print("ego_state: ", ego_state)
+        #print("tlpa: ", self._trafficlight_position_acquired)
+        if self._trafficlight_position_acquired == False:
+            for detection in trafficlight_state:
+                if detection[1]>0.30:
+                    if self._first_measure == False:
+                        if trafficlight_distance < DEPTH_THRESHOLD: # treshold for depth camera
+                            self._ego_state_prec = ego_state
+                            self._trafficlight_distance_prec = trafficlight_distance
+                            self._first_measure = True
+                            print("prima misura acquisita")
+                    elif trafficlight_distance < DEPTH_THRESHOLD:
+                        try: 
+                            self._trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
+                        except: 
+                            self._first_measure = False
+                            print("problema")
+                            break
+                        self._trafficlight_position_acquired = True
+                        print('tl position acquired')
  
     # Aggiungere descrizione chiatta
     def get_trafficlight_waypoint(self, ego_state, trafficlight_distance, ego_state_prec, trafficlight_distance_prec, goal_state):
