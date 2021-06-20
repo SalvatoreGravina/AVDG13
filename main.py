@@ -42,7 +42,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 150        #  spawn index for player
+PLAYER_START_INDEX = 1       #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 1      # total number of vehicles to spawn
@@ -587,6 +587,7 @@ def exec_waypoint_nav_demo(args):
         turn_cooldown = 0
         prev_x = False
         prev_y = False
+
         # Put waypoints in the lane
         previuos_waypoint = mission_planner._map.convert_to_world(waypoints_route[0])
         for i in range(1,len(waypoints_route)):
@@ -679,6 +680,11 @@ def exec_waypoint_nav_demo(args):
                         theta += theta_step 
                     
                     turn_cooldown = 4
+                else:
+                    waypoint = mission_planner._map.convert_to_world(point)
+                    waypoint_on_lane = make_correction(waypoint, previuos_waypoint, turn_speed)
+                    waypoints.append(waypoint_on_lane)
+                    waypoints_intersections.append(waypoint_on_lane)
             else:
                 waypoint = mission_planner._map.convert_to_world(point)
 
@@ -973,7 +979,6 @@ def exec_waypoint_nav_demo(args):
                 # Calculate the goal state set in the local frame for the local planner.
                 # Current speed should be open loop for the velocity profile generation.
                 ego_state = [current_x, current_y, current_yaw, open_loop_speed]
-
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 

@@ -102,6 +102,7 @@ class BehaviouralPlanner:
                     elif trafficlight_distance < DEPTH_THRESHOLD:
                         trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
                         self._trafficlight_position_acquired = True
+                        print('tl position acquired')
 
         if self._state == FOLLOW_LANE:
             #print("FOLLOW_LANE")
@@ -121,6 +122,7 @@ class BehaviouralPlanner:
             else:
                 self._detection_state = False
                 self._trafficlight_position_acquired = False
+                print('punto attuale non incrocio')
 
             for detection in trafficlight_state:
                 if detection[0] == 'stop' and detection[1] > 0.50 and self._trafficlight_position_acquired == True :
