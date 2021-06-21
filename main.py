@@ -42,7 +42,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 1       #  spawn index for player
+PLAYER_START_INDEX = 32      #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 1      # total number of vehicles to spawn
@@ -89,7 +89,7 @@ DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
 
 # Planning Constants
 NUM_PATHS = 7
-BP_LOOKAHEAD_BASE      = 16.0              # m
+BP_LOOKAHEAD_BASE      = 16.0 + 10            # m
 BP_LOOKAHEAD_TIME      = 1.0              # s
 PATH_OFFSET            = 1.5              # m
 CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
@@ -125,7 +125,7 @@ camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
 camera_parameters['width'] = 416  # default 200
 camera_parameters['height'] = 416 # default 200
-camera_parameters['fov'] = 90
+camera_parameters['fov'] = 75
 
 # Given the BB from detection and depth data, compute distance from camera
 def distance_from_boxes(boxes, camera_depth):
@@ -622,6 +622,7 @@ def exec_waypoint_nav_demo(args):
                 if abs(dx) > 0 and abs(dy) > 0:
                     intersection_pair.append((center_intersection,len(waypoints)))
                     waypoints[-1][2] = turn_speed
+                    waypoints_intersections.append(waypoints[-1])
                     
                     middle_point = [(start_intersection[0] + end_intersection[0]) /2,  (start_intersection[1] + end_intersection[1]) /2]
 
@@ -701,7 +702,9 @@ def exec_waypoint_nav_demo(args):
                 previuos_waypoint = waypoint
 
         waypoints_intersections = np.array(waypoints_intersections)
+        print(waypoints_intersections)
         waypoints = np.array(waypoints)
+        print("wp", waypoints)
         #############################################
         # Controller 2D Class Declaration
         #############################################
@@ -958,7 +961,7 @@ def exec_waypoint_nav_demo(args):
             if frame % LP_FREQUENCY_DIVISOR == 0:
 
                 
-                if frame % (LP_FREQUENCY_DIVISOR * 2) == 0:
+                if frame % (LP_FREQUENCY_DIVISOR ) == 0:
 
                     camera0 = sensor_data.get('CameraRGB0',None)
 

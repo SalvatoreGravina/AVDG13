@@ -108,11 +108,17 @@ class BehaviouralPlanner:
 
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
-            if self._goal_state in self._waypoints_intersections:
+            #if self._goal_state in self._waypoints_intersections:
+            #if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)): 
+            if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == True:
+                print("nell'incrocio e tpla")
+            elif np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == False:
                 self._detection_state = True
+                print("nell'incrocio e NON tpla")
             else:
                 self._detection_state = False
                 self._trafficlight_position_acquired = False
+                print("tutti gli altri waypoint")
             for detection in trafficlight_state:
                 if detection[0] == 'stop' and detection[1] > 0.40 and self._trafficlight_position_acquired == True :
                     print("Identificato semaforo rosso")
@@ -134,9 +140,9 @@ class BehaviouralPlanner:
                 logging.info('passaggio a STAY_STOPPED')
             
             for detection in trafficlight_state:
-                if detection[0] == 'go' and detection[1]>0.40:
+                if detection[0] == 'go' and detection[1]>0.45:
                     print('go')
-                    self._goal_state = self._goal_state_prec
+                    #self._goal_state = self._goal_state_prec
                     self._state = FOLLOW_LANE
                     self._first_measure = False
                     self._detection_state = False
@@ -153,9 +159,9 @@ class BehaviouralPlanner:
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
             for detection in trafficlight_state:
-                if detection[0] == 'go' and detection[1]>0.40:
+                if detection[0] == 'go' and detection[1]>0.45:
                     print('go')
-                    self._goal_state = self._goal_state_prec
+                    #self._goal_state = self._goal_state_prec
                     #print('ego: ', ego_state)
                     #print('goal state: ', self._goal_state)
                     self._state = FOLLOW_LANE
@@ -191,12 +197,13 @@ class BehaviouralPlanner:
                         #print('trafficlight_distance_prec: ', self._trafficlight_distance_prec)
                         #print('trafficlight_distance: ', trafficlight_distance)
 
-                        # TOLTO IL TRY CATCH GIUSTO PER FARE DELLE PROVE
-                        self._trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
+                        try: 
+                            self._trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
+                        except: 
                             #print(e)
-                            #print("problema")
-                            #self._first_measure = False
-                            #break
+                            print("problema")
+                            self._first_measure = False
+                            break
                         self._trafficlight_position_acquired = True
                         print('tl position acquired')
  
@@ -220,7 +227,7 @@ class BehaviouralPlanner:
     def triangulate(self, AB, BC, AC):
 
         y = (AB ** 2 + AC ** 2 - BC ** 2) / (2 * AB)
-        x = math.sqrt(abs(AC ** 2 - y ** 2)) # aggiunto abs
+        x = math.sqrt(AC ** 2 - y ** 2)
         
         return x, y
 
