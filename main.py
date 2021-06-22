@@ -42,10 +42,10 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 32      #  spawn index for player
+PLAYER_START_INDEX = 1      #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
-NUM_VEHICLES           = 1      # total number of vehicles to spawn
+NUM_PEDESTRIANS        = 10     # total number of pedestrians to spawn
+NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -125,7 +125,7 @@ camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
 camera_parameters['width'] = 416  # default 200
 camera_parameters['height'] = 416 # default 200
-camera_parameters['fov'] = 75
+camera_parameters['fov'] = 75 # default 90
 
 # Given the BB from detection and depth data, compute distance from camera
 def distance_from_boxes(boxes, camera_depth):
@@ -682,6 +682,8 @@ def exec_waypoint_nav_demo(args):
                     
                     turn_cooldown = 4
                 else:
+
+                    # if point is an intersection but without turn, add it to waypoints list and waypoints_intersections
                     waypoint = mission_planner._map.convert_to_world(point)
                     waypoint_on_lane = make_correction(waypoint, previuos_waypoint, turn_speed)
                     waypoints.append(waypoint_on_lane)
@@ -892,7 +894,7 @@ def exec_waypoint_nav_demo(args):
             pedestrian_lenght   = []
             pedestrian_speed    = []
 
-
+            # acquire information about non playable agents (vehicles and pedestrians)
             for agent in measurement_data.non_player_agents:
                 agent_id = agent.id
                 if agent.HasField('vehicle'):
@@ -906,9 +908,13 @@ def exec_waypoint_nav_demo(args):
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(
                             [agent.pedestrian.transform.location.x,
-                             agent.pedestrian.transform.location.y])
-                    pedestrian_lenght.append(agent.pedestrian.bounding_box.extent.x)
+                             agent.pedestrian.transform.location.y,
+                             agent.pedestrian.transform.location.z])
+                    pedestrian_lenght.append([agent.pedestrian.bounding_box.extent.x, agent.pedestrian.bounding_box.extent.y])
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
+                    obstacles.append(obstacle_to_world(agent.pedestrian.transform.location, agent.pedestrian.bounding_box.extent,agent.pedestrian.transform.rotation))
+
+            print(obstacles)
             # SHOW IMAGE FROM CAMERA
             #camera1 = sensor_data.get('CameraRGB1',None)
 
@@ -1010,7 +1016,7 @@ def exec_waypoint_nav_demo(args):
                 paths = local_planner.transform_paths(paths, ego_state)
 
                 # Perform collision checking.
-                collision_check_array = lp._collision_checker.collision_check(paths, [])
+                collision_check_array = lp._collision_checker.collision_check(paths, obstacles)
 
                 # Compute the best local path.
                 best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
@@ -1100,6 +1106,7 @@ def exec_waypoint_nav_demo(args):
                 trajectory_fig.roll("car", current_x, current_y)
                 
                 # Load parked car points
+                '''
                 if len(obstacles) > 0:
                     x = obstacles[:,:,0]
                     y = obstacles[:,:,1]
@@ -1107,7 +1114,7 @@ def exec_waypoint_nav_demo(args):
                     y = np.reshape(y, y.shape[0] * y.shape[1])
 
                     trajectory_fig.roll("obstacles_points", x, y)
-
+                '''
                 if lead_car_state != None:    # If there exists a lead car, plot it
                     trajectory_fig.roll("leadcar", lead_car_state[0], lead_car_state[1])
                 else :

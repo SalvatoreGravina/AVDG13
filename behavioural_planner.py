@@ -111,20 +111,17 @@ class BehaviouralPlanner:
             #if self._goal_state in self._waypoints_intersections:
             #if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)): 
             if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == True:
-                print("nell'incrocio e tpla")
+                pass
             elif np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == False:
                 self._detection_state = True
-                print("nell'incrocio e NON tpla")
             else:
                 self._detection_state = False
                 self._trafficlight_position_acquired = False
-                print("tutti gli altri waypoint")
             for detection in trafficlight_state:
                 if detection[0] == 'stop' and detection[1] > 0.40 and self._trafficlight_position_acquired == True :
                     print("Identificato semaforo rosso")
                     self._goal_state_prec = np.copy(self._goal_state)
                     self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
-                    print('goal_tl: ', self._goal_state)
                     self._state = DECELERATE_TO_STOP
                     logging.info('passaggio a DECELERATE_TO_STOP')
 
@@ -134,15 +131,12 @@ class BehaviouralPlanner:
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
         # state.
         elif self._state == DECELERATE_TO_STOP:
-            #print("DECELERATE_TO_STOP")
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 logging.info('passaggio a STAY_STOPPED')
             
             for detection in trafficlight_state:
                 if detection[0] == 'go' and detection[1]>0.45:
-                    print('go')
-                    #self._goal_state = self._goal_state_prec
                     self._state = FOLLOW_LANE
                     self._first_measure = False
                     self._detection_state = False
@@ -152,7 +146,7 @@ class BehaviouralPlanner:
         # least STOP_COUNTS number of cycles. If so, we can now leave
         # the stop sign and transition to the next state.
         elif self._state == STAY_STOPPED:
-            #print("STAY_STOPPED")
+
             # We have stayed stopped for the required number of cycles.
             # Allow the ego vehicle to leave the stop sign. Once it has
             # passed the stop sign, return to lane following
@@ -160,10 +154,7 @@ class BehaviouralPlanner:
             # check_for_stop_signs() helper functions.
             for detection in trafficlight_state:
                 if detection[0] == 'go' and detection[1]>0.45:
-                    print('go')
-                    #self._goal_state = self._goal_state_prec
-                    #print('ego: ', ego_state)
-                    #print('goal state: ', self._goal_state)
+
                     self._state = FOLLOW_LANE
                     self._first_measure = False
                     self._detection_state = False
@@ -189,19 +180,10 @@ class BehaviouralPlanner:
                             self._ego_state_prec = ego_state
                             self._trafficlight_distance_prec = trafficlight_distance
                             self._first_measure = True
-                            print("prima misura acquisita")
                     elif trafficlight_distance < DEPTH_THRESHOLD:
-                        #print("goal_state: ", self._goal_state)
-                        #print("ego_state: ", ego_state)
-                        #print('ego_state_prec: ', self._ego_state_prec)
-                        #print('trafficlight_distance_prec: ', self._trafficlight_distance_prec)
-                        #print('trafficlight_distance: ', trafficlight_distance)
-
                         try: 
                             self._trafficlight_waypoint = self.get_trafficlight_waypoint(ego_state,trafficlight_distance, self._ego_state_prec, self._trafficlight_distance_prec, self._goal_state)
                         except: 
-                            #print(e)
-                            print("problema")
                             self._first_measure = False
                             break
                         self._trafficlight_position_acquired = True
