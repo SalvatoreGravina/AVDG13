@@ -42,11 +42,11 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 1      #  spawn index for player
+PLAYER_START_INDEX = 3      #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 10     # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 20     # total number of pedestrians to spawn
 NUM_VEHICLES           = 0      # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
+SEED_PEDESTRIANS       = 17      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
@@ -914,7 +914,6 @@ def exec_waypoint_nav_demo(args):
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
                     obstacles.append(obstacle_to_world(agent.pedestrian.transform.location, agent.pedestrian.bounding_box.extent,agent.pedestrian.transform.rotation))
 
-            print(obstacles)
             # SHOW IMAGE FROM CAMERA
             #camera1 = sensor_data.get('CameraRGB1',None)
 
@@ -1019,7 +1018,7 @@ def exec_waypoint_nav_demo(args):
                 collision_check_array = lp._collision_checker.collision_check(paths, obstacles)
 
                 # Compute the best local path.
-                best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
+                best_index, best_path_occluded = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
                 # If no path was feasible, continue to follow the previous best path.
                 if best_index == None:
                     best_path = lp._prev_best_path
@@ -1039,7 +1038,7 @@ def exec_waypoint_nav_demo(args):
 
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 
-                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle)
+                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle,best_path_occluded)
                     
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.

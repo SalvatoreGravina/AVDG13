@@ -128,7 +128,11 @@ class CollisionChecker:
                 navigate with.
         """
         best_index = None
+        best_path_occluded = False
         best_score = float('Inf')
+        half_measure_th1=np.sqrt((paths[int(len(paths)/2) - 1][0][-1]-goal_state[0])**2+(paths[int(len(paths)/2) - 1][1][-1]-goal_state[1])**2)
+        half_measure_th2=np.sqrt((paths[int(len(paths)/2)][0][-1]-goal_state[0])**2+(paths[int(len(paths)/2)][1][-1]-goal_state[1])**2)
+        threshold=(half_measure_th1 + half_measure_th2) / 2
         for i in range(len(paths)):
             # Handle the case of collision-free paths.
             if collision_check_array[i]:
@@ -151,10 +155,15 @@ class CollisionChecker:
             # Handle the case of colliding paths.
             else:
                 score = float('Inf')
-                
+
+
             # Set the best index to be the path index with the lowest score
             if score < best_score:
                 best_score = score
                 best_index = i
+        if best_score > threshold:
+                best_path_occluded = True
+                best_index=int(len(paths)/2)
 
-        return best_index
+
+        return best_index, best_path_occluded

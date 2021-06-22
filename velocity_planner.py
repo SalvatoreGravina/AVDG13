@@ -60,7 +60,8 @@ class VelocityPlanner:
     # Recall that the path is of the form [x_points, y_points, t_points].
     def compute_velocity_profile(self, path, desired_speed, ego_state, 
                                  closed_loop_speed, decelerate_to_stop, 
-                                 lead_car_state, follow_lead_vehicle):
+                                 lead_car_state, follow_lead_vehicle,
+                                 best_path_occluded):
         """Computes the velocity profile for the local planner path.
         
         args:
@@ -114,7 +115,7 @@ class VelocityPlanner:
         # For our profile, use the open loop speed as our initial speed.
         start_speed = ego_state[3]
         # Generate a trapezoidal profile to decelerate to stop.
-        if decelerate_to_stop:
+        if decelerate_to_stop or best_path_occluded:
             profile = self.decelerate_profile(path, start_speed)
 
         # If we need to follow the lead vehicle, make sure we decelerate to its
