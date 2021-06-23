@@ -42,11 +42,11 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 3      #  spawn index for player
+PLAYER_START_INDEX = 1      #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 20     # total number of pedestrians to spawn
-NUM_VEHICLES           = 0      # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 17      # seed for pedestrian spawn randomizer
+NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
+NUM_VEHICLES           = 30    # total number of vehicles to spawn
+SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
@@ -89,7 +89,7 @@ DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
 
 # Planning Constants
 NUM_PATHS = 7
-BP_LOOKAHEAD_BASE      = 16.0 + 10            # m
+BP_LOOKAHEAD_BASE      = 16.0          # m
 BP_LOOKAHEAD_TIME      = 1.0              # s
 PATH_OFFSET            = 1.5              # m
 CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
@@ -99,7 +99,7 @@ PATH_SELECT_WEIGHT     = 10
 A_MAX                  = 2.5              # m/s^2
 SLOW_SPEED             = 2.0              # m/s
 STOP_LINE_BUFFER       = 3.5              # m
-LEAD_VEHICLE_LOOKAHEAD = 20.0             # m
+LEAD_VEHICLE_LOOKAHEAD = 20.0 + 5           # m
 LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the 
                                           # local planner operate at a lower
                                           # frequency than the controller
@@ -233,7 +233,7 @@ def make_carla_settings(args):
     camera_height = camera_parameters['height']
     camera_fov = camera_parameters['fov']
     camera_roll = 0
-    camera_pitch = 30
+    camera_pitch = 15
     camera_yaw = 0
 
     # Declare here your sensors
@@ -685,9 +685,12 @@ def exec_waypoint_nav_demo(args):
 
                     # if point is an intersection but without turn, add it to waypoints list and waypoints_intersections
                     waypoint = mission_planner._map.convert_to_world(point)
+                    waypoints[-1][2] = 2.5
+                    waypoints_intersections.append(waypoints[-1])
                     waypoint_on_lane = make_correction(waypoint, previuos_waypoint, turn_speed)
                     waypoints.append(waypoint_on_lane)
                     waypoints_intersections.append(waypoint_on_lane)
+                    
             else:
                 waypoint = mission_planner._map.convert_to_world(point)
 
@@ -904,6 +907,7 @@ def exec_waypoint_nav_demo(args):
                              round(math.radians(agent.vehicle.transform.rotation.yaw), 4)])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
+                    obstacles.append(obstacle_to_world(agent.vehicle.transform.location, agent.vehicle.bounding_box.extent,agent.vehicle.transform.rotation))
 
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(
@@ -1038,7 +1042,7 @@ def exec_waypoint_nav_demo(args):
 
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 
-                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle,best_path_occluded)
+                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle, best_path_occluded)
                     
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.

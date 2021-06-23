@@ -139,7 +139,7 @@ class BehaviouralPlanner:
                 if detection[0] == 'go' and detection[1]>0.45:
                     self._state = FOLLOW_LANE
                     self._first_measure = False
-                    self._detection_state = False
+                    #self._detection_state = False
                     logging.info('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if we have stayed stopped for at
