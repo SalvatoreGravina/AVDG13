@@ -117,13 +117,14 @@ class BehaviouralPlanner:
             else:
                 self._detection_state = False
                 self._trafficlight_position_acquired = False
-            for detection in trafficlight_state:
-                if detection[0] == 'stop' and detection[1] > 0.40 and self._trafficlight_position_acquired == True :
-                    print("Identificato semaforo rosso")
-                    self._goal_state_prec = np.copy(self._goal_state)
-                    self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
-                    self._state = DECELERATE_TO_STOP
-                    logging.info('passaggio a DECELERATE_TO_STOP')
+
+            state, accuracy = self.get_trafficlight_state(trafficlight_state)
+            if state == 'stop' and accuracy > 0.40 and self._trafficlight_position_acquired == True :
+                print("Identificato semaforo rosso")
+                self._goal_state_prec = np.copy(self._goal_state)
+                self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
+                self._state = DECELERATE_TO_STOP
+                logging.info('passaggio a DECELERATE_TO_STOP')
 
 
         # In this state, check if we have reached a complete stop. Use the
@@ -134,13 +135,11 @@ class BehaviouralPlanner:
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 logging.info('passaggio a STAY_STOPPED')
-            
-            for detection in trafficlight_state:
-                if detection[0] == 'go' and detection[1]>0.45:
-                    self._state = FOLLOW_LANE
-                    self._first_measure = False
-                    #self._detection_state = False
-                    logging.info('passaggio a FOLLOW_LANE')
+            state, accuracy = self.get_trafficlight_state(trafficlight_state)
+            if state == 'go' and accuracy > 0.45:
+                self._state = FOLLOW_LANE
+                self._first_measure = False
+                logging.info('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -152,13 +151,12 @@ class BehaviouralPlanner:
             # passed the stop sign, return to lane following
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
-            for detection in trafficlight_state:
-                if detection[0] == 'go' and detection[1]>0.45:
-
-                    self._state = FOLLOW_LANE
-                    self._first_measure = False
-                    self._detection_state = False
-                    logging.info('passaggio a FOLLOW_LANE')                           
+            state, accuracy = self.get_trafficlight_state(trafficlight_state)
+            if state == 'go' and accuracy > 0.45:
+                self._state = FOLLOW_LANE
+                self._first_measure = False
+                self._detection_state = False
+                logging.info('passaggio a FOLLOW_LANE')                           
                     
 
             # If the stop sign is no longer along our path, we can now
@@ -203,6 +201,20 @@ class BehaviouralPlanner:
         trafficlight_waypoint = self.projection(self._trafficlight_position, ego_state, goal_state)
         return trafficlight_waypoint
 
+    def get_trafficlight_state(self, trafficlight_state):
+        if len(trafficlight_state) < 3:
+            return None, None
+        observation = []
+        for trafficlight_frame in trafficlight_state[-3:]:
+            for detection in trafficlight_frame:
+                observation.append(detection[0])
+
+        if len(observation) < 3: 
+            return None, None
+        if observation[0] == observation[1] and observation[0] == observation[2]:
+            return observation[0], trafficlight_state[-1][0][1]
+        else:
+            return None, None
 
 
     # Triangulate a point

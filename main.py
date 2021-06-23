@@ -976,7 +976,8 @@ def exec_waypoint_nav_demo(args):
 
                     if camera0 is not None and bp._detection_state == True:
                         image = to_bgra_array(camera0)
-                        trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+                        trafficlight_state_frame, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+                        trafficlight_state.append(trafficlight_state_frame)
                         cv2.imshow("CameraRGB0", plt_image)
                         cv2.waitKey(1)
 
