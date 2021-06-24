@@ -16,7 +16,7 @@ import local_planner
 import behavioural_planner
 import cv2
 import json
-from math import sin, cos, pi, tan, sqrt
+from math import e, sin, cos, pi, tan, sqrt
 
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
@@ -42,9 +42,9 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 7     #  spawn index for player
+PLAYER_START_INDEX = 150     #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 20     # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30    # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
@@ -57,6 +57,8 @@ TOTAL_FRAME_BUFFER     = 300    # number of frames to buffer after total runtime
 CLIENT_WAIT_TIME       = 3      # wait time for client before starting episode
                                 # used to make sure the server loads
                                 # consistently
+
+
 
 WEATHERID = {
     "DEFAULT": 0,
@@ -113,9 +115,11 @@ INTERP_MAX_POINTS_PLOT    = 10   # number of points used for displaying
 INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 
 # controller output directory
-CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
+CONTROLLER_OUTPUT_FOLDER  = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 
+# distance threshold for depth camera
+DEPTH_THRESHOLD           = 10
 
 
 # Camera parameters
@@ -126,6 +130,52 @@ camera_parameters['z'] = 1.3
 camera_parameters['width'] = 416  # default 200
 camera_parameters['height'] = 416 # default 200
 camera_parameters['fov'] = 75 # default 90
+
+
+
+# Triangulate a point
+def triangulate(AB, BC, AC):
+
+    y = (AB ** 2 + AC ** 2 - BC ** 2) / (2 * AB)
+    x = math.sqrt(AC ** 2 - y ** 2)
+    
+    return x, y
+
+# transform coordinate to world frame
+def coordinate_to_world( xp, yp, Ox, Oy, R):
+
+    x = Ox + xp * math.cos(R) - yp * math.sin(R)
+    y = Oy + xp * math.sin(R) + yp * math.cos(R)
+    
+    return x, y
+
+# Project point on a straight line
+def projection(project_point, a_point, b_point):
+
+    p1 = np.array([a_point[0], a_point[1]])
+    p2 = np.array([b_point[0], b_point[1]])
+    p3 = np.array([project_point[0], project_point[1]])
+    l2 = np.sum((p1-p2)**2)
+
+    t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
+
+    return p1 + t * (p2 - p1)
+
+
+# Aggiungere descrizione chiatta
+def get_trafficlight_waypoint(ego_state, trafficlight_distance, ego_state_prec, trafficlight_distance_prec, goal_state, trafficlight_position):
+    a_b = math.sqrt((ego_state[0] - ego_state_prec[0]) ** 2 + (ego_state[1] - ego_state_prec[1]) ** 2)
+    b_c = trafficlight_distance
+    a_c = trafficlight_distance_prec
+
+    xp, yp = triangulate(a_b, b_c, a_c)
+    x, y = coordinate_to_world(xp, yp, ego_state_prec[0], ego_state_prec[1], ego_state[2])
+
+    trafficlight_position[0] = x
+    trafficlight_position[1] = y
+    trafficlight_waypoint = projection(trafficlight_position, ego_state, goal_state)
+    return trafficlight_waypoint
+
 
 # Given the BB from detection and depth data, compute distance from camera
 def distance_from_boxes(boxes, camera_depth):
@@ -877,6 +927,12 @@ def exec_waypoint_nav_demo(args):
 
         # Initialize index for lead car
         lead_car_index = None
+
+        # Initialize traffic_light info
+        trafficlight_position       = [0.0,0.0]
+        trafficlight_distance_prec  = 0
+
+        ego_state_prec              = [0.0, 0.0, 0.0, 0.0]
         
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
@@ -969,22 +1025,21 @@ def exec_waypoint_nav_demo(args):
             # simulation frequency.
             if frame % LP_FREQUENCY_DIVISOR == 0:
 
+                camera0 = sensor_data.get('CameraRGB0',None)
+
+                if camera0 is not None and bp._detection_state == True:
+                    image = to_bgra_array(camera0)
+                    trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+                    cv2.imshow("CameraRGB0", plt_image)
+                    cv2.waitKey(1)
+
+                    camera2 = sensor_data.get('CameraDepth',None)
+
+                    if camera2 is not None:
+                        trafficlight_distance = distance_from_boxes(trafficlight_boxes, camera2)
+
                 
-                if frame % (LP_FREQUENCY_DIVISOR ) == 0:
-
-                    camera0 = sensor_data.get('CameraRGB0',None)
-
-                    if camera0 is not None and bp._detection_state == True:
-                        image = to_bgra_array(camera0)
-                        trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
-                        cv2.imshow("CameraRGB0", plt_image)
-                        cv2.waitKey(1)
-
-                        camera2 = sensor_data.get('CameraDepth',None)
-
-                        if camera2 is not None:
-                            trafficlight_distance = distance_from_boxes(trafficlight_boxes, camera2)
-
+                
                 # Compute open loop speed estimate.
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
@@ -995,7 +1050,28 @@ def exec_waypoint_nav_demo(args):
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
                 # Perform a state transition in the behavioural planner.
-                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state, trafficlight_distance)
+                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
+
+                print("goal state",bp._goal_state)
+                if bp._trafficlight_position_acquired == False:
+                    for detection in trafficlight_state:
+                        if detection[1]>0.30:
+                            if bp._first_measure == False:
+                                if trafficlight_distance < DEPTH_THRESHOLD: # treshold for depth camera
+                                    ego_state_prec = ego_state
+                                    trafficlight_distance_prec = trafficlight_distance
+                                    bp._first_measure = True
+                                    print("first measure")
+                            elif trafficlight_distance < DEPTH_THRESHOLD:
+                                try: 
+                                    bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,trafficlight_distance, ego_state_prec, trafficlight_distance_prec, bp._goal_state,trafficlight_position)
+                                except Exception as e:
+                                    print(e) 
+                                    bp._first_measure = False
+                                    break
+                                bp._trafficlight_position_acquired = True
+                                print('tl position acquired')
+
 
                 # Check if we need to follow a lead vehicle.
                 if not bp._follow_lead_vehicle:
@@ -1032,6 +1108,7 @@ def exec_waypoint_nav_demo(args):
 
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
+                    print("speed goal",bp._goal_state)
                     desired_speed = bp._goal_state[2]
 
                     # If lead vehicle is present, save info
@@ -1124,7 +1201,7 @@ def exec_waypoint_nav_demo(args):
                     trajectory_fig.roll("leadcar", 0, 0)
 
                 if bp._trafficlight_position != None: 
-                    trajectory_fig.roll("trafficlight", bp._trafficlight_position[0], bp._trafficlight_position[1])
+                    trajectory_fig.roll("trafficlight", trafficlight_position[0], trafficlight_position[1])
                 else :
                     trajectory_fig.roll("trafficlight", 0, 0)
 
