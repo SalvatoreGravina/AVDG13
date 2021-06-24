@@ -42,9 +42,9 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 1      #  spawn index for player
+PLAYER_START_INDEX = 7     #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 20     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30    # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
@@ -976,8 +976,7 @@ def exec_waypoint_nav_demo(args):
 
                     if camera0 is not None and bp._detection_state == True:
                         image = to_bgra_array(camera0)
-                        trafficlight_state_frame, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
-                        trafficlight_state.append(trafficlight_state_frame)
+                        trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
                         cv2.imshow("CameraRGB0", plt_image)
                         cv2.waitKey(1)
 
