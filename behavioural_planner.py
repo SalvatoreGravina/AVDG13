@@ -122,6 +122,7 @@ class BehaviouralPlanner:
                 print("Identificato semaforo rosso")
                 self._goal_state_prec = np.copy(self._goal_state)
                 self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
+                print(self._goal_state)
                 self._state = DECELERATE_TO_STOP
                 logging.info('passaggio a DECELERATE_TO_STOP')
 

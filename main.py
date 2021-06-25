@@ -42,11 +42,11 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 150     #  spawn index for player
-DESTINATION_INDEX = 15       # Setting a Destination HERE
+PLAYER_START_INDEX = 2     #  spawn index for player
+DESTINATION_INDEX = 23       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
 NUM_VEHICLES           = 30    # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
+SEED_PEDESTRIANS       = 12      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
@@ -273,7 +273,7 @@ def make_carla_settings(args):
         SeedVehicles=SEED_VEHICLES,
         SeedPedestrians=SEED_PEDESTRIANS,
         WeatherId=SIMWEATHER,
-        QualityLevel=args.quality_level)
+        QualityLevel='Epic')
 
     # Common cameras settings
     cam_height = camera_parameters['z'] 
@@ -283,8 +283,8 @@ def make_carla_settings(args):
     camera_height = camera_parameters['height']
     camera_fov = camera_parameters['fov']
     camera_roll = 0
-    camera_pitch = 15
-    camera_yaw = 0
+    camera_pitch = 0
+    camera_yaw = 10
 
     # Declare here your sensors
 
@@ -302,13 +302,13 @@ def make_carla_settings(args):
 
     # set position X (front), Y (lateral), Z (height) relative to the car in meters
     # (0,0,0) is at center of baseline of car 
-    camera0.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
+    camera0.set_position(cam_x_pos + 0.5, cam_y_pos+0.8, cam_height)
     camera1.set_position(cam_x_pos, cam_y_pos-0.5, cam_height)
-    camera2.set_position(cam_x_pos, cam_y_pos+0.5, cam_height)
+    camera2.set_position(cam_x_pos + 0.5, cam_y_pos+0.8, cam_height)
 
     # set orientation
-    camera0.set_rotation(camera_yaw, camera_pitch, camera_roll)
-    camera2.set_rotation(camera_yaw, camera_pitch, camera_roll)
+    camera0.set_rotation(camera_pitch, camera_yaw, camera_roll)
+    camera2.set_rotation(camera_pitch, camera_yaw, camera_roll)
 
     # set field of view
     camera0.set(FOV=camera_fov)
@@ -672,7 +672,9 @@ def exec_waypoint_nav_demo(args):
                 if abs(dx) > 0 and abs(dy) > 0:
                     intersection_pair.append((center_intersection,len(waypoints)))
                     waypoints[-1][2] = turn_speed
+                    waypoints[-2][2] = turn_speed
                     waypoints_intersections.append(waypoints[-1])
+                    waypoints_intersections.append(waypoints[-2])
                     
                     middle_point = [(start_intersection[0] + end_intersection[0]) /2,  (start_intersection[1] + end_intersection[1]) /2]
 
@@ -737,6 +739,8 @@ def exec_waypoint_nav_demo(args):
                     waypoint = mission_planner._map.convert_to_world(point)
                     waypoints[-1][2] = 2.5
                     waypoints_intersections.append(waypoints[-1])
+                    waypoints[-2][2] = 2.5
+                    waypoints_intersections.append(waypoints[-2])
                     waypoint_on_lane = make_correction(waypoint, previuos_waypoint, turn_speed)
                     waypoints.append(waypoint_on_lane)
                     waypoints_intersections.append(waypoint_on_lane)
