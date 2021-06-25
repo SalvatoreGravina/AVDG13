@@ -42,7 +42,7 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 105     #  spawn index for player
+PLAYER_START_INDEX = 150     #  spawn index for player
 DESTINATION_INDEX = 15       # Setting a Destination HERE
 NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
 NUM_VEHICLES           = 1    # total number of vehicles to spawn
@@ -119,7 +119,7 @@ CONTROLLER_OUTPUT_FOLDER  = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 
 # distance threshold for depth camera
-DEPTH_THRESHOLD           = 14
+DEPTH_THRESHOLD           = 12
 
 
 # Camera parameters
@@ -302,9 +302,9 @@ def make_carla_settings(args):
 
     # set position X (front), Y (lateral), Z (height) relative to the car in meters
     # (0,0,0) is at center of baseline of car 
-    camera0.set_position(cam_x_pos + 0.5, cam_y_pos+0.8, cam_height)
-    camera1.set_position(cam_x_pos, cam_y_pos-0.5, cam_height)
-    camera2.set_position(cam_x_pos + 0.5, cam_y_pos+0.8, cam_height)
+    camera0.set_position(cam_x_pos + 0.5, cam_y_pos + 0.8, cam_height)
+    camera1.set_position(cam_x_pos + 0.5, cam_y_pos      , cam_height)
+    camera2.set_position(cam_x_pos + 0.5, cam_y_pos + 0.8, cam_height)
 
     # set orientation
     camera0.set_rotation(camera_pitch, camera_yaw, camera_roll)
@@ -317,7 +317,7 @@ def make_carla_settings(args):
 
     # Adding camera to configuration 
     settings.add_sensor(camera0)
-    #settings.add_sensor(camera1)
+    settings.add_sensor(camera1)
     settings.add_sensor(camera2)
 
     return settings
@@ -946,6 +946,7 @@ def exec_waypoint_nav_demo(args):
             obstacles = []
             # obtain traffic_light info
             trafficlight_state      = []
+            trafficlight_state1     = []
             trafficlight_boxes      = []
             trafficlight_distance   = []
 
@@ -1029,7 +1030,8 @@ def exec_waypoint_nav_demo(args):
             # simulation frequency.
             if frame % LP_FREQUENCY_DIVISOR == 0:
 
-                camera0 = sensor_data.get('CameraRGB0',None)
+                camera0 = sensor_data.get('CameraRGB0', None)
+                camera1 = sensor_data.get('CameraRGB1', None)
 
                 if camera0 is not None and bp._detection_state == True:
                     image = to_bgra_array(camera0)
@@ -1041,6 +1043,12 @@ def exec_waypoint_nav_demo(args):
 
                     if camera2 is not None:
                         trafficlight_distance = distance_from_boxes(trafficlight_boxes, camera2)
+
+                if camera1 is not None and bp._detection_state == True:
+                    image = to_bgra_array(camera1)
+                    trafficlight_state1, plt_image1, trafficlight_boxes1 = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
+                    cv2.imshow("CameraRGB1", plt_image1)
+                    cv2.waitKey(1)
 
                 
                 
@@ -1054,7 +1062,7 @@ def exec_waypoint_nav_demo(args):
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
                 # Perform a state transition in the behavioural planner.
-                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
+                bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state, trafficlight_state1)
 
                 if bp._trafficlight_position_acquired == False:
                     for detection in trafficlight_state:

@@ -31,12 +31,13 @@ class BehaviouralPlanner:
         self._trafficlight_position_acquired = False
         self._trafficlight_waypoint          = [0.0, 0.0, 0.0]
         self._trafficlight_state             = []
+        self._trafficlight_state1            = []
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
 
     # Handles state transitions and computes the goal state.
-    def transition_state(self, waypoints, ego_state, closed_loop_speed, trafficlight_state):
+    def transition_state(self, waypoints, ego_state, closed_loop_speed, trafficlight_state, trafficlight_state1):
         """Handles state transitions and computes the goal state.  
         
         args:
@@ -89,6 +90,7 @@ class BehaviouralPlanner:
         # understand it.
 
         self._trafficlight_state.append(trafficlight_state)
+        self._trafficlight_state1.append(trafficlight_state1)
 
         if self._state == FOLLOW_LANE:
             #print("FOLLOW_LANE")
@@ -117,7 +119,7 @@ class BehaviouralPlanner:
                 self._trafficlight_state = []
                 self._trafficlight_position_acquired = False
 
-            state, accuracy = self.get_trafficlight_state(self._trafficlight_state)
+            state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'stop' and accuracy > 0.40 and self._trafficlight_position_acquired == True :
                 print("Identificato semaforo rosso")
                 self._goal_state_prec = np.copy(self._goal_state)
@@ -135,7 +137,7 @@ class BehaviouralPlanner:
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 logging.info('passaggio a STAY_STOPPED')
-            state, accuracy = self.get_trafficlight_state(self._trafficlight_state)
+            state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'go' and accuracy > 0.45:
                 self._state = FOLLOW_LANE
                 self._first_measure = False
@@ -151,7 +153,7 @@ class BehaviouralPlanner:
             # passed the stop sign, return to lane following
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
-            state, accuracy = self.get_trafficlight_state(self._trafficlight_state)
+            state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'go' and accuracy > 0.45:
                 self._state = FOLLOW_LANE
                 self._first_measure = False
@@ -170,18 +172,24 @@ class BehaviouralPlanner:
             raise ValueError('Invalid state value.')  
             
 
-    def get_trafficlight_state(self, trafficlight_state):
-        if len(trafficlight_state) < 3:
+    def get_trafficlight_state(self, trafficlight_state, trafficlight_state1):
+        if len(trafficlight_state) < 3 and len(trafficlight_state1) < 3:
             return None, None
-        observation = []
+        observation     = []
         accuracy = 0
-        for trafficlight_frame in trafficlight_state[-3:]:
-            for detection in trafficlight_frame:
-                observation.append(detection[0])
-                accuracy = max(accuracy,detection[1])
+        for trafficlight_frame, trafficlight_frame1 in zip(trafficlight_state[-3:], trafficlight_state1[-3:]):
+            for detection, detection1 in zip(trafficlight_frame, trafficlight_frame1):
+
+                if detection[1] > detection1[1]:
+                    observation.append(detection[0])
+                else:
+                    observation.append(detection1[0])
+                accuracy = max(detection[1], detection1[1])
 
         if len(observation) < 3: 
             return None, None
+            
+
         if observation[0] == observation[1] and observation[0] == observation[2]:
             return observation[0], accuracy
         else:
