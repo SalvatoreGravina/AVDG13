@@ -168,12 +168,7 @@ class BehaviouralPlanner:
 
         else:
             raise ValueError('Invalid state value.')  
-
-        
-
-        
- 
-    
+            
 
     def get_trafficlight_state(self, trafficlight_state):
         if len(trafficlight_state) < 3:

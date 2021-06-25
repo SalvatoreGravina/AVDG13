@@ -42,10 +42,10 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 2     #  spawn index for player
-DESTINATION_INDEX = 23       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
-NUM_VEHICLES           = 30    # total number of vehicles to spawn
+PLAYER_START_INDEX = 105     #  spawn index for player
+DESTINATION_INDEX = 15       # Setting a Destination HERE
+NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
+NUM_VEHICLES           = 1    # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 12      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -119,7 +119,7 @@ CONTROLLER_OUTPUT_FOLDER  = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 
 # distance threshold for depth camera
-DEPTH_THRESHOLD           = 10
+DEPTH_THRESHOLD           = 14
 
 
 # Camera parameters
@@ -1056,7 +1056,6 @@ def exec_waypoint_nav_demo(args):
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state)
 
-                print("goal state",bp._goal_state)
                 if bp._trafficlight_position_acquired == False:
                     for detection in trafficlight_state:
                         if detection[1]>0.30:
@@ -1065,7 +1064,6 @@ def exec_waypoint_nav_demo(args):
                                     ego_state_prec = ego_state
                                     trafficlight_distance_prec = trafficlight_distance
                                     bp._first_measure = True
-                                    print("first measure")
                             elif trafficlight_distance < DEPTH_THRESHOLD:
                                 try: 
                                     bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,trafficlight_distance, ego_state_prec, trafficlight_distance_prec, bp._goal_state,trafficlight_position)
@@ -1112,7 +1110,6 @@ def exec_waypoint_nav_demo(args):
 
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
-                    print("speed goal",bp._goal_state)
                     desired_speed = bp._goal_state[2]
 
                     # If lead vehicle is present, save info
