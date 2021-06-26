@@ -899,17 +899,7 @@ def exec_waypoint_nav_demo(args):
                                         STOP_LINE_BUFFER)
         bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE,
                                                     LEAD_VEHICLE_LOOKAHEAD, waypoints_intersections)
-        #############################################
-        # Load detector
-        #############################################
-        # Section to load and configure the detector module
 
-        # detector config file
-        with open('./traffic_light_detection_module/config.json') as config_buffer:
-            DETECTOR_CONFIG = json.loads(config_buffer.read())
-        
-        # Detector loading
-        model = YOLO(config=DETECTOR_CONFIG)
 
         #############################################
         # Scenario Execution Loop
@@ -929,6 +919,24 @@ def exec_waypoint_nav_demo(args):
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
 
+        #############################################
+        # Load detector
+        #############################################
+        # Section to load and configure the detector module
+
+        # detector config file
+        with open('./traffic_light_detection_module/config.json') as config_buffer:
+            DETECTOR_CONFIG = json.loads(config_buffer.read())
+        
+        # Detector loading
+        model = YOLO(config=DETECTOR_CONFIG)
+
+        #################################################
+        # Initialize variables outside simulation loop
+        #################################################
+        # These variables need to be initialize outside 
+        # the loop
+
         # Initialize index for lead car
         lead_car_index = None
 
@@ -936,12 +944,15 @@ def exec_waypoint_nav_demo(args):
         trafficlight_position       = [0.0,0.0]
         trafficlight_distance_prec  = 0
 
+        # Initialize support variable to store previous car state
         ego_state_prec              = [0.0, 0.0, 0.0, 0.0]
         
         for frame in range(TOTAL_EPISODE_FRAMES):
+
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
 
+<<<<<<< Updated upstream
             # UPDATE HERE the obstacles list
             obstacles = []
             # obtain traffic_light info
@@ -980,6 +991,8 @@ def exec_waypoint_nav_demo(args):
                     obstacles.append(obstacle_to_world(agent.pedestrian.transform.location, agent.pedestrian.bounding_box.extent,agent.pedestrian.transform.rotation))
 
 
+=======
+>>>>>>> Stashed changes
             # Update pose and timestamp
             prev_timestamp = current_timestamp
             current_x, current_y, current_z, current_pitch, current_roll, current_yaw = \
@@ -1020,10 +1033,54 @@ def exec_waypoint_nav_demo(args):
             # to be operating at a frequency that is a division to the 
             # simulation frequency.
             if frame % LP_FREQUENCY_DIVISOR == 0:
-
+                
+                # Gather information about RGB cameras
                 camera0 = sensor_data.get('CameraRGB0', None)
                 camera1 = sensor_data.get('CameraRGB1', None)
 
+                # UPDATE HERE the obstacles list
+                obstacles = []
+
+                #################################################
+                # Initialize variables inside simulation loop
+                #################################################
+                # obtain traffic_light info
+                trafficlight_state      = []
+                trafficlight_state1     = []
+                trafficlight_boxes      = []
+                trafficlight_distance   = []
+
+                # Obtain AGENTS information.
+                lead_car_pos        = []
+                lead_car_speed      = []
+                pedestrian_pos      = []
+
+                #####################################################################################################
+                # Acquire information about non playable agents (vehicles and pedestrians) and update obstacles list
+                #####################################################################################################
+                for agent in measurement_data.non_player_agents:
+                    if agent.HasField('vehicle'):
+                        lead_car_pos.append(
+                                [agent.vehicle.transform.location.x,
+                                agent.vehicle.transform.location.y,
+                                round(math.radians(agent.vehicle.transform.rotation.yaw), 4)])
+                        lead_car_speed.append(agent.vehicle.forward_speed)
+                        obstacles.append(obstacle_to_world(agent.vehicle.transform.location,
+                                                           agent.vehicle.bounding_box.extent,
+                                                           agent.vehicle.transform.rotation))
+
+                    if agent.HasField('pedestrian'):
+                        pedestrian_pos.append(
+                                [agent.pedestrian.transform.location.x,
+                                agent.pedestrian.transform.location.y,
+                                agent.pedestrian.transform.location.z])
+                        obstacles.append(obstacle_to_world(agent.pedestrian.transform.location,
+                                                           agent.pedestrian.bounding_box.extent,
+                                                           agent.pedestrian.transform.rotation))
+
+                ################################################################################################################################
+                # Acquire information about trafficlight position and frame
+                ################################################################################################################################
                 if camera0 is not None and bp._detection_state == True:
                     image = to_bgra_array(camera0)
                     trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
@@ -1041,8 +1098,6 @@ def exec_waypoint_nav_demo(args):
                     cv2.imshow("CameraRGB1", plt_image1)
                     cv2.waitKey(1)
 
-                
-                
                 # Compute open loop speed estimate.
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
@@ -1055,6 +1110,12 @@ def exec_waypoint_nav_demo(args):
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed, trafficlight_state, trafficlight_state1)
 
+                #####################################################
+                # Compute trafficlight position in world frame
+                #####################################################
+                # We calculate the position in world frame of the trafficlight with triangulation
+                # we use two measures of car's position and their distance from the trafficlight
+                # to achieve this goal
                 if bp._trafficlight_position_acquired == False:
                     for detection in trafficlight_state:
                         if detection[1]>0.30:
@@ -1065,7 +1126,16 @@ def exec_waypoint_nav_demo(args):
                                     bp._first_measure = True
                             elif trafficlight_distance < DEPTH_THRESHOLD:
                                 try: 
+<<<<<<< Updated upstream
                                     bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,trafficlight_distance, ego_state_prec, trafficlight_distance_prec, bp._goal_state, trafficlight_position)
+=======
+                                    bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,
+                                                                                          trafficlight_distance,
+                                                                                          ego_state_prec,
+                                                                                          trafficlight_distance_prec,
+                                                                                          bp._goal_state,
+                                                                                          trafficlight_position)
+>>>>>>> Stashed changes
                                 except Exception as e:
                                     print(e) 
                                     bp._first_measure = False
@@ -1073,8 +1143,11 @@ def exec_waypoint_nav_demo(args):
                                 bp._trafficlight_position_acquired = True
                                 print('tl position acquired')
 
-
-                # Check if we need to follow a lead vehicle.
+                #####################################################
+                # Check if we need to follow a lead vehicle
+                #####################################################
+                # We check if each vehicle in the simulation is a lead vehicle
+                # and when found we save the index so next iteration we only check this one
                 if not bp._follow_lead_vehicle:
                     for i in range(len(lead_car_pos)):
                         bp.check_for_lead_vehicle(ego_state, lead_car_pos[i])
@@ -1110,8 +1183,10 @@ def exec_waypoint_nav_demo(args):
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
                     desired_speed = bp._goal_state[2]
-
+                    
+                    #####################################################
                     # If lead vehicle is present, save info
+                    #####################################################
                     if lead_car_index != None:
                         lead_car_state = [lead_car_pos[lead_car_index][0], lead_car_pos[lead_car_index][1], lead_car_speed[lead_car_index]]
                     else:
@@ -1119,7 +1194,14 @@ def exec_waypoint_nav_demo(args):
 
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 
-                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state,  bp._follow_lead_vehicle, best_path_occluded)
+                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path,
+                                                                                    desired_speed,
+                                                                                    ego_state,
+                                                                                    current_speed,
+                                                                                    decelerate_to_stop,
+                                                                                    lead_car_state,
+                                                                                    bp._follow_lead_vehicle,
+                                                                                    best_path_occluded)
                     
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.
