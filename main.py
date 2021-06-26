@@ -1085,16 +1085,12 @@ def exec_waypoint_nav_demo(args):
                                     bp._first_measure = True
                             elif trafficlight_distance < DEPTH_THRESHOLD:
                                 try: 
-<<<<<<< Updated upstream
-                                    bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,trafficlight_distance, ego_state_prec, trafficlight_distance_prec, bp._goal_state, trafficlight_position)
-=======
                                     bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,
                                                                                           trafficlight_distance,
                                                                                           ego_state_prec,
                                                                                           trafficlight_distance_prec,
                                                                                           bp._goal_state,
                                                                                           trafficlight_position)
->>>>>>> Stashed changes
                                 except Exception as e:
                                     print(e) 
                                     bp._first_measure = False
