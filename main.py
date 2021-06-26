@@ -734,8 +734,10 @@ def exec_waypoint_nav_demo(args):
                     
                     turn_cooldown = 4
                 else:
-
-                    # if point is an intersection but without turn, add it to waypoints list and waypoints_intersections
+                    ###################################################################
+                    # if point is an intersection but without turn, add it to waypoints
+                    # list and waypoints_intersections, also add the previous ones
+                    ###################################################################
                     waypoint = mission_planner._map.convert_to_world(point)
                     waypoints[-1][2] = 2.5
                     waypoints_intersections.append(waypoints[-1])
@@ -761,9 +763,7 @@ def exec_waypoint_nav_demo(args):
                 previuos_waypoint = waypoint
 
         waypoints_intersections = np.array(waypoints_intersections)
-        print(waypoints_intersections)
         waypoints = np.array(waypoints)
-        print("wp", waypoints)
         #############################################
         # Controller 2D Class Declaration
         #############################################
@@ -952,47 +952,6 @@ def exec_waypoint_nav_demo(args):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
 
-<<<<<<< Updated upstream
-            # UPDATE HERE the obstacles list
-            obstacles = []
-            # obtain traffic_light info
-            trafficlight_state      = []
-            trafficlight_state1     = []
-            trafficlight_boxes      = []
-            trafficlight_distance   = []
-
-            # Obtain AGENTS information.
-            lead_car_pos        = []
-            lead_car_length     = []
-            lead_car_speed      = []
-            pedestrian_pos      = []
-            pedestrian_lenght   = []
-            pedestrian_speed    = []
-
-            # acquire information about non playable agents (vehicles and pedestrians)
-            for agent in measurement_data.non_player_agents:
-                agent_id = agent.id
-                if agent.HasField('vehicle'):
-                    lead_car_pos.append(
-                            [agent.vehicle.transform.location.x,
-                             agent.vehicle.transform.location.y,
-                             round(math.radians(agent.vehicle.transform.rotation.yaw), 4)])
-                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                    lead_car_speed.append(agent.vehicle.forward_speed)
-                    obstacles.append(obstacle_to_world(agent.vehicle.transform.location, agent.vehicle.bounding_box.extent,agent.vehicle.transform.rotation))
-
-                if agent.HasField('pedestrian'):
-                    pedestrian_pos.append(
-                            [agent.pedestrian.transform.location.x,
-                             agent.pedestrian.transform.location.y,
-                             agent.pedestrian.transform.location.z])
-                    pedestrian_lenght.append([agent.pedestrian.bounding_box.extent.x, agent.pedestrian.bounding_box.extent.y])
-                    pedestrian_speed.append(agent.pedestrian.forward_speed)
-                    obstacles.append(obstacle_to_world(agent.pedestrian.transform.location, agent.pedestrian.bounding_box.extent,agent.pedestrian.transform.rotation))
-
-
-=======
->>>>>>> Stashed changes
             # Update pose and timestamp
             prev_timestamp = current_timestamp
             current_x, current_y, current_z, current_pitch, current_roll, current_yaw = \
