@@ -9,9 +9,8 @@ DECELERATE_TO_STOP = 1
 STAY_STOPPED = 2
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
-# Number of cycles before moving from stop sign.
-STOP_COUNTS = 10
-
+TRAFFICLIGHT_STOP_THRESHOLD = 0.40
+TRAFFICLIGHT_GO_THRESHOLD = 0.45
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead, waypoints_intersections):
@@ -59,7 +58,16 @@ class BehaviouralPlanner:
                     ego_x and ego_y     : position (m)
                     ego_yaw             : top-down orientation [-pi to pi]
                     ego_open_loop_speed : open loop speed (m/s)
-            closed_loop_speed: current (closed-loop) speed for vehicle (m/s)
+            closed_loop_speed: 
+                current (closed-loop) speed for vehicle (m/s)
+            trafficlight_state: current detections and accuracy from camera0
+                labels can be "go" or "stop", accuracy is float beetween 0 and 1
+                format: [[label,accuracy]]
+                example: [["go",0.9042]]
+            trafficlight_state1: current detections and accuracy from camera1
+                labels can be "go" or "stop", accuracy is float beetween 0 and 1
+                format: [[label,accuracy]]
+                example: [["go",0.9042]]
         variables to set:
             self._goal_index: Goal index for the vehicle to reach
                 i.e. waypoints[self._goal_index] gives the goal waypoint
@@ -70,30 +78,34 @@ class BehaviouralPlanner:
                     FOLLOW_LANE         : Follow the global waypoints (lane).
                     DECELERATE_TO_STOP  : Decelerate to stop.
                     STAY_STOPPED        : Stay stopped.
-            self._stop_count: Counter used to count the number of cycles which
-                the vehicle was in the STAY_STOPPED state so far.
+            self._trafficlight_state: list of all trafficlight detections from
+                camera0
+            self._trafficlight_state: list of all trafficlight detections from
+                camera1
+            self._detetion_state: flag that activate the detector
+            self._trafficlight_position_acquired: flag that show it the position
+                of the trafficlight is known
         useful_constants:
             STOP_THRESHOLD  : Stop speed threshold (m). The vehicle should fully
                               stop when its speed falls within this threshold.
-            STOP_COUNTS     : Number of cycles (simulation iterations) 
-                              before moving from stop sign.
+            TRAFFICLIGHT_STOP_THRESHOLD : accuracy metrics for trafficlight 
+                detection to be taken into account
+            TRAFFICLIGHT_GO_THRESHOLD : accuracy metrics for trafficlight 
+                detection to be taken into account
         """
-        # In this state, continue tracking the lane by finding the
-        # goal index in the waypoint list that is within the lookahead
-        # distance. Then, check to see if the waypoint path intersects
-        # with any stop lines. If it does, then ensure that the goal
-        # state enforces the car to be stopped before the stop line.
-        # You should use the get_closest_index(), get_goal_index(), and
-        # check_for_stop_signs() helper functions.
-        # Make sure that get_closest_index() and get_goal_index() functions are
-        # complete, and examine the check_for_stop_signs() function to
-        # understand it.
+
 
         self._trafficlight_state.append(trafficlight_state)
         self._trafficlight_state1.append(trafficlight_state1)
 
+        # In this state, continue tracking the lane by finding the
+        # goal index in the waypoint list that is within the lookahead
+        # distance. Then, check to see if the waypoint path is part of
+        # an intersection. If it does, then activate the detector and
+        # if a trafficlight is present, predict it's state and if
+        # conditions occurred, transition to DECELERATE_TO_STOP
         if self._state == FOLLOW_LANE:
-            #print("FOLLOW_LANE")
+
             # First, find the closest index to the ego vehicle.
             closest_len, closest_index = get_closest_index(waypoints, ego_state)
 
@@ -102,14 +114,13 @@ class BehaviouralPlanner:
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
-            # PRINT DEL GOAL INDEX SOLO QUANDO CAMBIA (PROBLEMA CON L'INCROCIO DRITTO)
+            # PRINT DEL GOAL INDEX SOLO QUANDO CAMBIA
             if self._goal_index != goal_index:
-                print('nuovo waypoint: ',waypoints[goal_index])
+                logging.info('nuovo waypoint: ',waypoints[goal_index])
 
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
-            #if self._goal_state in self._waypoints_intersections:
-            #if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)): 
+
             if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == True:
                 pass
             elif np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == False:
@@ -117,10 +128,11 @@ class BehaviouralPlanner:
             else:
                 self._detection_state = False
                 self._trafficlight_state = []
+                self._trafficlight_state1 = []
                 self._trafficlight_position_acquired = False
 
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
-            if state == 'stop' and accuracy > 0.40 and self._trafficlight_position_acquired == True :
+            if state == 'stop' and accuracy > TRAFFICLIGHT_STOP_THRESHOLD and self._trafficlight_position_acquired == True :
                 print("Identificato semaforo rosso")
                 self._goal_state_prec = np.copy(self._goal_state)
                 self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
@@ -131,48 +143,53 @@ class BehaviouralPlanner:
 
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
-        # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
-        # state.
+        # stop, and compare to STOP_THRESHOLD.  If so, transition to STAY_STOPPED.
+        # Otherwise while decelerating, if the trafficlight state changes to go,
+        # transition to FOLLOW_LANE
         elif self._state == DECELERATE_TO_STOP:
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 logging.info('passaggio a STAY_STOPPED')
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
-            if state == 'go' and accuracy > 0.45:
+            if state == 'go' and accuracy > TRAFFICLIGHT_GO_THRESHOLD:
                 self._state = FOLLOW_LANE
                 self._first_measure = False
                 logging.info('passaggio a FOLLOW_LANE')
 
-        # In this state, check to see if we have stayed stopped for at
-        # least STOP_COUNTS number of cycles. If so, we can now leave
-        # the stop sign and transition to the next state.
+        # In this state, check to see if the trafficlight state
+        # changes to go, If so, we can now leave the intersection
+        # and transition to FOLLOW_LANE
         elif self._state == STAY_STOPPED:
 
-            # We have stayed stopped for the required number of cycles.
-            # Allow the ego vehicle to leave the stop sign. Once it has
-            # passed the stop sign, return to lane following
-            # You should use the get_closest_index(), get_goal_index(), and 
-            # check_for_stop_signs() helper functions.
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
-            if state == 'go' and accuracy > 0.45:
+            if state == 'go' and accuracy > TRAFFICLIGHT_GO_THRESHOLD:
                 self._state = FOLLOW_LANE
                 self._first_measure = False
                 self._detection_state = False
                 self._trafficlight_state = []
                 logging.info('passaggio a FOLLOW_LANE')                           
                     
-
-            # If the stop sign is no longer along our path, we can now
-            # transition back to our lane following state.
-                    
-            #if not stop_sign_found: self._state = FOLLOW_LANE
-
-
         else:
             raise ValueError('Invalid state value.')  
             
-
+    # Compute the state and accuracy of the trafficlight
     def get_trafficlight_state(self, trafficlight_state, trafficlight_state1):
+        """Given the last three detections, check their consistency and
+            compute state and accuracy
+
+            args:
+                trafficlight_state: current detections and accuracy from camera0
+                    labels can be "go" or "stop", accuracy is float beetween 0 and 1
+                    format: [[label,accuracy]]
+                    example: [["go",0.9042]]
+                trafficlight_state1: current detections and accuracy from camera0
+                    labels can be "go" or "stop", accuracy is float beetween 0 and 1
+                    format: [[label,accuracy]]
+                    example: [["go",0.9042]]
+            returns:
+                observation: state of the detection to be used to transition, can be None
+                accuracy: score of the detection, can be None
+        """
         if len(trafficlight_state) < 3 and len(trafficlight_state1) < 3:
             return None, None
         observation     = []
@@ -194,9 +211,6 @@ class BehaviouralPlanner:
             return observation[0], accuracy
         else:
             return None, None
-
-
-    
 
     # Gets the goal index in the list of waypoints, based on the lookahead and
     # the current ego state. In particular, find the earliest waypoint that has accumulated
@@ -298,7 +312,7 @@ class BehaviouralPlanner:
             ego_heading_vector = [math.cos(ego_state[2]),
                                   math.sin(ego_state[2])]
             # Check to see if the relative angle between the lead vehicle and the ego
-            # vehicle lies within +/- 15 degrees of the ego vehicle's heading.
+            # vehicle lies within +/- 45 degrees of the ego vehicle's heading.
             if np.dot(lead_car_delta_vector, ego_heading_vector) < (1 / math.sqrt(2)):
                 return
 

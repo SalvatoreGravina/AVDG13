@@ -97,6 +97,9 @@ class CollisionChecker:
     # paths that are in collision. 
     # Disqualifies paths that collide with obstacles from the selection
     # process.
+    # Compute a threshold of the middle path beetween central and external ones
+    # If the best path is one on the far left or right, set a flag to True
+    # to compute a deceleration profile and return the central path as the best path.
     # collision_check_array contains True at index i if paths[i] is
     # collision-free, otherwise it contains False.
     def select_best_path_index(self, paths, collision_check_array, goal_state):
@@ -126,10 +129,12 @@ class CollisionChecker:
         returns:
             best_index: The path index which is best suited for the vehicle to
                 navigate with.
+            best_path_occluded: flag used to avoid collisions
         """
         best_index = None
         best_path_occluded = False
         best_score = float('Inf')
+        # paths can be at most 7 (NUM_PATHS in main.py) but can be less
         if len(paths)>5:
             half_measure_th1=np.sqrt((paths[int(len(paths)/2) - 1][0][-1]-goal_state[0])**2+(paths[int(len(paths)/2) - 1][1][-1]-goal_state[1])**2)
             half_measure_th2=np.sqrt((paths[int(len(paths)/2)][0][-1]-goal_state[0])**2+(paths[int(len(paths)/2)][1][-1]-goal_state[1])**2)

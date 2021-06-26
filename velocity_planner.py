@@ -88,6 +88,8 @@ class VelocityPlanner:
             follow_lead_vehicle: If true, the ego car should perform lead
                 vehicle handling, as the lead vehicle is close enough to
                 influence the speed profile of the local path.
+            best_path_occluded: If ture, the best path collide with an obstacle
+                so we need to decelerate
         internal parameters of interest:
             self._slow_speed: coasting speed (m/s) of the vehicle before it 
                 comes to a stop
