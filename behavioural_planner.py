@@ -201,7 +201,8 @@ class BehaviouralPlanner:
                     observation.append(detection[0])
                 else:
                     observation.append(detection1[0])
-                accuracy = max(detection[1], detection1[1])
+
+                accuracy = max(accuracy, detection[1], detection1[1])
 
         if len(observation) < 3: 
             return None, None

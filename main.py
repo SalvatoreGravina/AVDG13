@@ -979,15 +979,6 @@ def exec_waypoint_nav_demo(args):
                     pedestrian_speed.append(agent.pedestrian.forward_speed)
                     obstacles.append(obstacle_to_world(agent.pedestrian.transform.location, agent.pedestrian.bounding_box.extent,agent.pedestrian.transform.rotation))
 
-            # SHOW IMAGE FROM CAMERA
-            #camera1 = sensor_data.get('CameraRGB1',None)
-
-
-            #if camera1 is not None:
-            #    image = to_bgra_array(camera1)
-            #    trafficlight_state[1], plt_image = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
-            #    cv2.imshow("CameraRGB1", plt_image)
-            #    cv2.waitKey(1)
 
             # Update pose and timestamp
             prev_timestamp = current_timestamp
@@ -1074,7 +1065,7 @@ def exec_waypoint_nav_demo(args):
                                     bp._first_measure = True
                             elif trafficlight_distance < DEPTH_THRESHOLD:
                                 try: 
-                                    bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,trafficlight_distance, ego_state_prec, trafficlight_distance_prec, bp._goal_state,trafficlight_position)
+                                    bp._trafficlight_waypoint = get_trafficlight_waypoint(ego_state,trafficlight_distance, ego_state_prec, trafficlight_distance_prec, bp._goal_state, trafficlight_position)
                                 except Exception as e:
                                     print(e) 
                                     bp._first_measure = False
@@ -1086,7 +1077,7 @@ def exec_waypoint_nav_demo(args):
                 # Check if we need to follow a lead vehicle.
                 if not bp._follow_lead_vehicle:
                     for i in range(len(lead_car_pos)):
-                        bp.check_for_lead_vehicle(ego_state,lead_car_pos[i])
+                        bp.check_for_lead_vehicle(ego_state, lead_car_pos[i])
                         if bp._follow_lead_vehicle:
                             lead_car_index = i
                             break
