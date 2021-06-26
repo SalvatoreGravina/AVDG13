@@ -1092,7 +1092,6 @@ def exec_waypoint_nav_demo(args):
                                                                                           bp._goal_state,
                                                                                           trafficlight_position)
                                 except Exception as e:
-                                    print(e) 
                                     bp._first_measure = False
                                     break
                                 bp._trafficlight_position_acquired = True
