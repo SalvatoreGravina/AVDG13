@@ -1,13 +1,34 @@
 # AVDG13
 
-- installa i pacchetti con:
+Final project of "Autonomous Vehicle Driving" course
 
-```PowerShell
-pipenv install *pacchetto*
+## Authors: Group 13
+
+| Name | Student ID |
+|--------------|--------|
+|Vincenzo di Somma | 0622701283|
+|Salvatore Gravina | 0622701063|
+|Ferdinando Guarino | 0622701321|
+
+## REQUIREMENTS
+
+- A ***requirements.txt*** file is provided with required packages.
+- Compatible with CARLA 0.8.4 and Python 3.6.4.
+- Clone this repository in the ***PythonClient*** folder.
+
+## SETUP
+
+1. Access CARLA root folder
+2. Start CARLA server on map **TOWN 01**
+
+```cmd
+start ./CarlaUE4.exe /Game/Maps/Town01 -carla-server -windowed -fps=30 -quality-level=Epic -benchmark
 ```
 
-- aggiorna i file dell'env con:
+3. Set ***CONFIGURABLE PARAMETERS*** in main.py
 
-```PowerShell
-pipenv update
+4. Start client
+
+```cmd
+python ./PythonClient/AVDG13/main.py
 ```
