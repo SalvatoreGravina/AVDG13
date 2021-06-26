@@ -9,6 +9,7 @@ DECELERATE_TO_STOP = 1
 STAY_STOPPED = 2
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
+# accuracy thresholds for trafficlight
 TRAFFICLIGHT_STOP_THRESHOLD = 0.40
 TRAFFICLIGHT_GO_THRESHOLD = 0.45
 
@@ -114,26 +115,26 @@ class BehaviouralPlanner:
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
-            # PRINT DEL GOAL INDEX SOLO QUANDO CAMBIA
+            # Print new goal index
             if self._goal_index != goal_index:
                 logging.info('nuovo waypoint: ',waypoints[goal_index])
 
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
 
-            if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == True:
-                pass
-            elif np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == False:
+            # Check if new waypoint is an intersection point and activate detection if so
+            if np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1)) and self._trafficlight_position_acquired == False:
                 self._detection_state = True
-            else:
+            elif not (np.any(np.all(np.isin(self._waypoints_intersections, self._goal_state, True), axis=1))):
                 self._detection_state = False
                 self._trafficlight_state = []
                 self._trafficlight_state1 = []
                 self._trafficlight_position_acquired = False
 
+
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'stop' and accuracy > TRAFFICLIGHT_STOP_THRESHOLD and self._trafficlight_position_acquired == True :
-                print("Identificato semaforo rosso")
+                logging.info("Identificato semaforo rosso")
                 self._goal_state_prec = np.copy(self._goal_state)
                 self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
                 print(self._goal_state)
@@ -147,9 +148,12 @@ class BehaviouralPlanner:
         # Otherwise while decelerating, if the trafficlight state changes to go,
         # transition to FOLLOW_LANE
         elif self._state == DECELERATE_TO_STOP:
+
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 logging.info('passaggio a STAY_STOPPED')
+
+
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'go' and accuracy > TRAFFICLIGHT_GO_THRESHOLD:
                 self._state = FOLLOW_LANE
@@ -172,7 +176,9 @@ class BehaviouralPlanner:
         else:
             raise ValueError('Invalid state value.')  
             
-    # Compute the state and accuracy of the trafficlight
+    # Compute state and detection accuracy of the trafficlight
+    # Check if last three detected states are equals and return
+    # the best accuracy beetween them
     def get_trafficlight_state(self, trafficlight_state, trafficlight_state1):
         """Given the last three detections, check their consistency and
             compute state and accuracy

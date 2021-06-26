@@ -32,7 +32,7 @@ from carla.planner.city_track import CityTrack
 
 
 
-# Import nostri
+# Detector imports
 sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
 from traffic_light_detection_module.yolo import YOLO
 from traffic_light_detection_module.predict import predict_traffic_light_state
@@ -91,7 +91,7 @@ DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
 
 # Planning Constants
 NUM_PATHS = 7
-BP_LOOKAHEAD_BASE      = 16.0          # m
+BP_LOOKAHEAD_BASE      = 16.0             # m
 BP_LOOKAHEAD_TIME      = 1.0              # s
 PATH_OFFSET            = 1.5              # m
 CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
@@ -101,7 +101,7 @@ PATH_SELECT_WEIGHT     = 10
 A_MAX                  = 2.5              # m/s^2
 SLOW_SPEED             = 2.0              # m/s
 STOP_LINE_BUFFER       = 3.5              # m
-LEAD_VEHICLE_LOOKAHEAD = 20.0 + 5           # m
+LEAD_VEHICLE_LOOKAHEAD = 20.0 + 5         # m
 LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the 
                                           # local planner operate at a lower
                                           # frequency than the controller
@@ -130,20 +130,41 @@ camera_parameters['z'] = 1.3
 camera_parameters['width'] = 416  # default 200
 camera_parameters['height'] = 416 # default 200
 camera_parameters['fov'] = 75 # default 90
+camera_parameters['roll'] = 0
+camera_parameters['pitch'] = 0
+camera_parameters['yaw'] = 10
 
 
 
-# Triangulate a point
+# Given a triangle with vertex A-B-C compute
+# the cartesian coordinates of vertex C
 def triangulate(AB, BC, AC):
-
+    """ Triangulate a point given 3 sides of a triangle
+        
+        args:
+            AB,BC;AC: side of a triangle
+        returns:
+            x,y: cartesian coordinates of vertex C
+    """
     y = (AB ** 2 + AC ** 2 - BC ** 2) / (2 * AB)
     x = math.sqrt(AC ** 2 - y ** 2)
     
     return x, y
 
-# transform coordinate to world frame
+# Transform given coordinate to world frame
 def coordinate_to_world( xp, yp, Ox, Oy, R):
+    """ Transform given coordinate to world frame
 
+        args:
+            xp,yp: cartesian coordinates of point
+                to transform
+            Ox,Oy: cartesian coordinates of relative
+                frame
+            R: angle of rotation beetween relative
+                and world frames
+        returns:
+            x,y: cartesian coordinate in world frame
+    """
     x = Ox + xp * math.cos(R) - yp * math.sin(R)
     y = Oy + xp * math.sin(R) + yp * math.cos(R)
     
@@ -151,7 +172,23 @@ def coordinate_to_world( xp, yp, Ox, Oy, R):
 
 # Project point on a straight line
 def projection(project_point, a_point, b_point):
+    """Project point on a straight line with extreme
+        A and B
 
+        args:
+            project_point: cartesian coordinate in 
+                world frame of point to project
+                format: [x,y]
+            a_point: cartesian coordinate in 
+                world frame of point A 
+            b_point: cartesian coordinate in
+                world frame of point B
+        returns:
+            point_on_line: cartesian coordinate in
+                world frame of projected point on
+                the line
+
+    """
     p1 = np.array([a_point[0], a_point[1]])
     p2 = np.array([b_point[0], b_point[1]])
     p3 = np.array([project_point[0], project_point[1]])
@@ -159,11 +196,37 @@ def projection(project_point, a_point, b_point):
 
     t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
 
-    return p1 + t * (p2 - p1)
+    point_on_line = p1 + t * (p2 - p1)
+    return point_on_line
 
 
-# Aggiungere descrizione chiatta
+# Compute a new waypoint to stop to near the trafficligh
+# Given the trafficlight distance acquired from the depth camera, 
+# the current position and previous positions of vehicle, triangulate
+# the position of the trafficlight in world frame and project coordinates
+# on a straight line passing throught the current position of vehicle and
+# the next goal state
 def get_trafficlight_waypoint(ego_state, trafficlight_distance, ego_state_prec, trafficlight_distance_prec, goal_state, trafficlight_position):
+    """ Compute a new waypoint to stop to near the trafficlight
+
+        args:
+            ego_state: current state of vehicle in the world
+                format: [x,y,yaw,open_loop_speed]
+            trafficlight_distance: distance of trafficlight from
+                depth camera
+            ego_state_prec: previous state of vehicle in the world
+                format: [x,y,yaw,open_loop_speed]
+            trafficlight_distance_prec: previous distance of trafficlight
+                from depth camera
+            goal_state: Goal state for the vehicle to reach (global frame)
+                format: [x_goal, y_goal, v_goal]
+            trafficlight_position: cartesian coordinate of trafficlight in
+                world frame
+        returns:
+            trafficlight_waypoint: cartesian coordinate in world frame of 
+                new waypoint to stop to
+                format: [x_goal, y_goal, v_goal]
+    """
     a_b = math.sqrt((ego_state[0] - ego_state_prec[0]) ** 2 + (ego_state[1] - ego_state_prec[1]) ** 2)
     b_c = trafficlight_distance
     a_c = trafficlight_distance_prec
@@ -177,9 +240,19 @@ def get_trafficlight_waypoint(ego_state, trafficlight_distance, ego_state_prec, 
     return trafficlight_waypoint
 
 
-# Given the BB from detection and depth data, compute distance from camera
+# Given the BB from detection and depth data, compute
+# distance from depth camera
 def distance_from_boxes(boxes, camera_depth):
+    """Given the BB from detection and depth data,
+       compute distance from depth camera
 
+        args:
+            boxes: bounding box from prediction
+            camera_depth: value from camera_depth
+        returns:
+            distance: distance of object from depth camera
+                in meters
+    """
     try: 
         xmin = int(boxes[0].xmin * 416)
         ymin = int(boxes[0].ymin * 416)
@@ -193,7 +266,7 @@ def distance_from_boxes(boxes, camera_depth):
         xmed = int((xmax - xmin) / 2)
         x = xmed + xmin
 
-        distance = depth_array[y][x] * 1000  # Consider depth in meters
+        distance = depth_array[y][x] * 1000
         return distance
 
     except: 
@@ -273,7 +346,7 @@ def make_carla_settings(args):
         SeedVehicles=SEED_VEHICLES,
         SeedPedestrians=SEED_PEDESTRIANS,
         WeatherId=SIMWEATHER,
-        QualityLevel='Epic')
+        QualityLevel=args.quality_level)
 
     # Common cameras settings
     cam_height = camera_parameters['z'] 
@@ -282,9 +355,9 @@ def make_carla_settings(args):
     camera_width = camera_parameters['width']
     camera_height = camera_parameters['height']
     camera_fov = camera_parameters['fov']
-    camera_roll = 0
-    camera_pitch = 0
-    camera_yaw = 10
+    camera_roll = camera_parameters['roll']
+    camera_pitch = camera_parameters['pitch']
+    camera_yaw = camera_parameters['yaw']
 
     # Declare here your sensors
 
@@ -627,6 +700,9 @@ def exec_waypoint_nav_demo(args):
         destination = mission_planner.project_node(destination_pos)
 
         waypoints = []
+        #############################################
+        # List for intersection waypoints
+        #############################################
         waypoints_intersections = []
         waypoints_route = mission_planner.compute_route(source, source_ori, destination, destination_ori)
         desired_speed = 5.0
@@ -672,6 +748,10 @@ def exec_waypoint_nav_demo(args):
                 if abs(dx) > 0 and abs(dy) > 0:
                     intersection_pair.append((center_intersection,len(waypoints)))
                     waypoints[-1][2] = turn_speed
+                    #############################################
+                    # Add the previous and the one before that
+                    # to waypoints_intersections with turn_speed
+                    #############################################
                     waypoints[-2][2] = turn_speed
                     waypoints_intersections.append(waypoints[-1])
                     waypoints_intersections.append(waypoints[-2])
@@ -729,6 +809,10 @@ def exec_waypoint_nav_demo(args):
                         waypoint_on_lane[2] = turn_speed
 
                         waypoints.append(waypoint_on_lane)
+
+                        #############################################
+                        # Add intersection points to waypoints_intersections
+                        #############################################
                         waypoints_intersections.append(waypoint_on_lane)
                         theta += theta_step 
                     
@@ -1037,9 +1121,9 @@ def exec_waypoint_nav_demo(args):
                                                            agent.pedestrian.bounding_box.extent,
                                                            agent.pedestrian.transform.rotation))
 
-                ################################################################################################################################
-                # Acquire information about trafficlight position and frame
-                ################################################################################################################################
+                ###################################################################
+                # Acquire information about trafficlight position and frame to show
+                ###################################################################
                 if camera0 is not None and bp._detection_state == True:
                     image = to_bgra_array(camera0)
                     trafficlight_state, plt_image, trafficlight_boxes = predict_traffic_light_state(model, image, DETECTOR_CONFIG)
@@ -1125,7 +1209,7 @@ def exec_waypoint_nav_demo(args):
                 # Perform collision checking.
                 collision_check_array = lp._collision_checker.collision_check(paths, obstacles)
 
-                # Compute the best local path.
+                # Compute the best local path and check if occluded.
                 best_index, best_path_occluded = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
                 # If no path was feasible, continue to follow the previous best path.
                 if best_index == None:
@@ -1220,18 +1304,9 @@ def exec_waypoint_nav_demo(args):
                 # Update live plotter with new feedback
                 trajectory_fig.roll("trajectory", current_x, current_y)
                 trajectory_fig.roll("car", current_x, current_y)
-                
-                # Load parked car points
-                '''
-                if len(obstacles) > 0:
-                    x = obstacles[:,:,0]
-                    y = obstacles[:,:,1]
-                    x = np.reshape(x, x.shape[0] * x.shape[1])
-                    y = np.reshape(y, y.shape[0] * y.shape[1])
 
-                    trajectory_fig.roll("obstacles_points", x, y)
-                '''
-                if lead_car_state != None:    # If there exists a lead car, plot it
+                # If there exists a lead car, plot it
+                if lead_car_state != None:    
                     trajectory_fig.roll("leadcar", lead_car_state[0], lead_car_state[1])
                 else :
                     trajectory_fig.roll("leadcar", 0, 0)
@@ -1362,7 +1437,7 @@ def main():
         '-q', '--quality-level',
         choices=['Low', 'Epic'],
         type=lambda s: s.title(),
-        default='Low',
+        default='Epic',
         help='graphics quality level.')
     argparser.add_argument(
         '-c', '--carla-settings',

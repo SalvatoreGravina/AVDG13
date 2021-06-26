@@ -97,9 +97,10 @@ class CollisionChecker:
     # paths that are in collision. 
     # Disqualifies paths that collide with obstacles from the selection
     # process.
-    # Compute a threshold of the middle path beetween central and external ones
-    # If the best path is one on the far left or right, set a flag to True
-    # to compute a deceleration profile and return the central path as the best path.
+    # Compute a threshold of the score beetween central and external paths
+    # If the best path is beetween the external ones, meaning it's score is
+    # higher than threshold, set a flag to True to compute a deceleration
+    # profile and return the central path as the best path.
     # collision_check_array contains True at index i if paths[i] is
     # collision-free, otherwise it contains False.
     def select_best_path_index(self, paths, collision_check_array, goal_state):
@@ -134,11 +135,13 @@ class CollisionChecker:
         best_index = None
         best_path_occluded = False
         best_score = float('Inf')
-        # paths can be at most 7 (NUM_PATHS in main.py) but can be less
+
+        # paths can be at most NUM_PATHS, but can be less depending on the situation
         if len(paths)>5:
             half_measure_th1=np.sqrt((paths[int(len(paths)/2) - 1][0][-1]-goal_state[0])**2+(paths[int(len(paths)/2) - 1][1][-1]-goal_state[1])**2)
             half_measure_th2=np.sqrt((paths[int(len(paths)/2)][0][-1]-goal_state[0])**2+(paths[int(len(paths)/2)][1][-1]-goal_state[1])**2)
             threshold=(half_measure_th1 + half_measure_th2) / 2
+
         for i in range(len(paths)):
             # Handle the case of collision-free paths.
             if collision_check_array[i]:
@@ -167,6 +170,7 @@ class CollisionChecker:
             if score < best_score:
                 best_score = score
                 best_index = i
+
         if len(paths) > 5:
             if best_score > threshold:
                     best_path_occluded = True

@@ -37,7 +37,26 @@ def predict_with_model_from_file(config, model, image_path):
                           nms_threshold=config['model']['nms_thresh'])
     return boxes
 
+# Identification and prediction of trafficlight state
 def predict_traffic_light_state(model, image, config):
+    """ Identify and predict of trafficlight state
+
+        args:
+            model: Keras model for prediction
+
+            image: np array on which apply the detector
+
+            config: json file with config parameters
+        returns:
+            trafficlight_state: current detections and accuracy from image
+                labels can be "go" or "stop", accuracy is float beetween 0 and 1
+                format: [[label,accuracy]]
+                example: [["go",0.9042]]
+
+            plt_image: image with Bounding Boxes and accuracy
+
+            boxes: parameters on the Bounding boxes from prediction
+    """
     image_to_detect = load_image_predict_from_numpy_array(image, config['model']['image_h'],config['model']['image_h'])
     dummy_array = np.zeros((1, 1, 1, 1, config['model']['max_obj'], 4))
     netout = model.model.predict([image_to_detect, dummy_array])[0]
