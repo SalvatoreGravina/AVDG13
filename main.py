@@ -42,12 +42,12 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 150     #  spawn index for player
-DESTINATION_INDEX = 15       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 0     # total number of pedestrians to spawn
-NUM_VEHICLES           = 1    # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 12      # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 6     # seed for vehicle spawn randomizer
+PLAYER_START_INDEX = 2     #  spawn index for player
+DESTINATION_INDEX = 23       # Setting a Destination HERE
+NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
+NUM_VEHICLES           = 30    # total number of vehicles to spawn
+SEED_PEDESTRIANS       = 10      # seed for pedestrian spawn randomizer
+SEED_VEHICLES          = 8     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -1311,7 +1311,7 @@ def exec_waypoint_nav_demo(args):
                 else :
                     trajectory_fig.roll("leadcar", 0, 0)
 
-                if bp._trafficlight_position != None: 
+                if trafficlight_position != None: 
                     trajectory_fig.roll("trafficlight", trafficlight_position[0], trafficlight_position[1])
                 else :
                     trajectory_fig.roll("trafficlight", 0, 0)
