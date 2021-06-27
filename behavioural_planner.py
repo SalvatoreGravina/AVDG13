@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import logging
-from os import close
 import numpy as np
 import math
 
@@ -13,6 +11,7 @@ STOP_THRESHOLD = 0.02
 # accuracy thresholds for trafficlight
 TRAFFICLIGHT_STOP_THRESHOLD = 0.40
 TRAFFICLIGHT_GO_THRESHOLD = 0.45
+# distance for which a waypoint is passed
 PASSED_WAYPOINT_THRESHOLD = 0.40
 
 class BehaviouralPlanner:
@@ -355,7 +354,7 @@ class BehaviouralPlanner:
 
             self._follow_lead_vehicle = False
 
-# Compute the waypoint index that is closest to the ego vehicle, and return
+# Compute the waypoint index that is closest and next to the ego vehicle, and return
 # it as well as the distance from the ego vehicle to that waypoint.
 def get_closest_index(waypoints, ego_state, closest_index):
     """Gets closest index a given list of waypoints to the vehicle position.
@@ -379,7 +378,8 @@ def get_closest_index(waypoints, ego_state, closest_index):
                 ego_x and ego_y     : position (m)
                 ego_yaw             : top-down orientation [-pi to pi]
                 ego_open_loop_speed : open loop speed (m/s)
-
+        closest_index: index of the waypoint which is closest to the vehicle.
+                i.e. waypoints[closest_index] gives the waypoint closest to the vehicle.
     returns:
         [closest_len, closest_index]:
             closest_len: length (m) to the closest waypoint from the vehicle.
