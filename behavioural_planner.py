@@ -113,7 +113,6 @@ class BehaviouralPlanner:
             # Check if closest waypoint is in the vicinity of the car, if yes, go to next waypoint.
             if closest_len < PASSED_WAYPOINT_THRESHOLD:
                 self._closest_index += 1
-            print(closest_len)
 
             # Next, find the goal index that lies within the lookahead distance
             # along the waypoints.
