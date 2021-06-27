@@ -21,6 +21,7 @@ class BehaviouralPlanner:
         self._state                          = FOLLOW_LANE
         self._follow_lead_vehicle            = False
         self._obstacle_on_lane               = False
+        self._first_measure                  = False
         self._goal_state                     = [0.0, 0.0, 0.0]
         self._goal_state_prec                = [0.0, 0.0, 0.0]
         self._goal_index                     = 0
