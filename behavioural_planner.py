@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+from os import close
 import numpy as np
 import math
 
@@ -12,6 +13,7 @@ STOP_THRESHOLD = 0.02
 # accuracy thresholds for trafficlight
 TRAFFICLIGHT_STOP_THRESHOLD = 0.40
 TRAFFICLIGHT_GO_THRESHOLD = 0.45
+PASSED_WAYPOINT_THRESHOLD = 0.40
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead, waypoints_intersections):
@@ -32,6 +34,7 @@ class BehaviouralPlanner:
         self._trafficlight_waypoint          = [0.0, 0.0, 0.0]
         self._trafficlight_state             = []
         self._trafficlight_state1            = []
+        self._closest_index                  = 0
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -107,17 +110,22 @@ class BehaviouralPlanner:
         # conditions occurred, transition to DECELERATE_TO_STOP
         if self._state == FOLLOW_LANE:
 
-            # First, find the closest index to the ego vehicle.
-            closest_len, closest_index = get_closest_index(waypoints, ego_state)
+            # First, find the NEXT closest index to the ego vehicle.
+            closest_len, self._closest_index = get_closest_index(waypoints, ego_state, self._closest_index)
+
+            # Check if closest waypoint is in the vicinity of the car, if yes, go to next waypoint.
+            if closest_len < PASSED_WAYPOINT_THRESHOLD:
+                self._closest_index += 1
+            print(closest_len)
 
             # Next, find the goal index that lies within the lookahead distance
             # along the waypoints.
-            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, self._closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
             # Print new goal index
             if self._goal_index != goal_index:
-                logging.info('nuovo waypoint: ',waypoints[goal_index])
+                print('nuovo waypoint: ', waypoints[goal_index])
 
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
@@ -134,12 +142,12 @@ class BehaviouralPlanner:
 
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'stop' and accuracy > TRAFFICLIGHT_STOP_THRESHOLD and self._trafficlight_position_acquired == True :
-                logging.info("Identificato semaforo rosso")
+                print("Identificato semaforo rosso")
                 self._goal_state_prec = np.copy(self._goal_state)
                 self._goal_state[0],self._goal_state[1], self._goal_state[2] = self._trafficlight_waypoint[0], self._trafficlight_waypoint[1], 0
                 print(self._goal_state)
                 self._state = DECELERATE_TO_STOP
-                logging.info('passaggio a DECELERATE_TO_STOP')
+                print('passaggio a DECELERATE_TO_STOP')
 
 
         # In this state, check if we have reached a complete stop. Use the
@@ -151,14 +159,14 @@ class BehaviouralPlanner:
 
             if abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
-                logging.info('passaggio a STAY_STOPPED')
+                print('passaggio a STAY_STOPPED')
 
 
             state, accuracy = self.get_trafficlight_state(self._trafficlight_state, self._trafficlight_state1)
             if state == 'go' and accuracy > TRAFFICLIGHT_GO_THRESHOLD:
                 self._state = FOLLOW_LANE
                 self._first_measure = False
-                logging.info('passaggio a FOLLOW_LANE')
+                print('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if the trafficlight state
         # changes to go, If so, we can now leave the intersection
@@ -171,7 +179,7 @@ class BehaviouralPlanner:
                 self._first_measure = False
                 self._detection_state = False
                 self._trafficlight_state = []
-                logging.info('passaggio a FOLLOW_LANE')                           
+                print('passaggio a FOLLOW_LANE')                           
                     
         else:
             raise ValueError('Invalid state value.')  
@@ -349,7 +357,7 @@ class BehaviouralPlanner:
 
 # Compute the waypoint index that is closest to the ego vehicle, and return
 # it as well as the distance from the ego vehicle to that waypoint.
-def get_closest_index(waypoints, ego_state):
+def get_closest_index(waypoints, ego_state, closest_index):
     """Gets closest index a given list of waypoints to the vehicle position.
 
     args:
@@ -379,9 +387,8 @@ def get_closest_index(waypoints, ego_state):
                 i.e. waypoints[closest_index] gives the waypoint closest to the vehicle.
     """
     closest_len = float('Inf')
-    closest_index = 0
 
-    for i in range(len(waypoints)):
+    for i in range(closest_index, len(waypoints)):
         temp = (waypoints[i][0] - ego_state[0])**2 + (waypoints[i][1] - ego_state[1])**2
         if temp < closest_len:
             closest_len = temp
