@@ -169,7 +169,6 @@ class CollisionChecker:
                 for obstacle in obstacle_orientation:
                     if collision_id_array[i]==obstacle[0]:
                         if abs(ego_state[2]-obstacle[1]) > math.pi/8 and abs(ego_state[2]-obstacle[1]) < 2.94:
-                            print('mi fermo')
                             best_path_occluded = True
                             best_index=int(len(paths)/2)
                             return best_index, best_path_occluded

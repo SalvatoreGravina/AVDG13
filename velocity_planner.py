@@ -118,7 +118,7 @@ class VelocityPlanner:
         start_speed = ego_state[3]
         # Generate a trapezoidal profile to decelerate to stop.
         if decelerate_to_stop or best_path_occluded:
-            profile = self.decelerate_profile(path, start_speed)
+            profile = self.decelerate_profile(path, start_speed, best_path_occluded)
 
         # If we need to follow the lead vehicle, make sure we decelerate to its
         # speed by the time we reach the time gap point.
@@ -146,7 +146,7 @@ class VelocityPlanner:
         return profile
 
     # Computes a trapezoidal profile for decelerating to stop.
-    def decelerate_profile(self, path, start_speed): 
+    def decelerate_profile(self, path, start_speed, best_path_occluded): 
         """Computes the velocity profile for the local path to decelerate to a
         stop.
         
@@ -210,7 +210,7 @@ class VelocityPlanner:
         # perform a smooth deceleration and require a harder deceleration. Build
         # the path up in reverse to ensure we reach zero speed at the required
         # time.
-        if brake_distance + decel_distance + stop_line_buffer > path_length:
+        if brake_distance + decel_distance + stop_line_buffer > path_length or best_path_occluded == True:
             speeds = []
             vf = 0.0
             # The speeds past the stop line buffer should be zero.
