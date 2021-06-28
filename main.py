@@ -42,12 +42,12 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 2     #  spawn index for player
-DESTINATION_INDEX = 23       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 30     # total number of pedestrians to spawn
-NUM_VEHICLES           = 30    # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 10      # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 8     # seed for vehicle spawn randomizer
+PLAYER_START_INDEX = 61     #  spawn index for player
+DESTINATION_INDEX = 148       # Setting a Destination HERE
+NUM_PEDESTRIANS        = 200     # total number of pedestrians to spawn
+NUM_VEHICLES           = 10    # total number of vehicles to spawn
+SEED_PEDESTRIANS       = 2      # seed for pedestrian spawn randomizer
+SEED_VEHICLES          = 4     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -1097,6 +1097,7 @@ def exec_waypoint_nav_demo(args):
                 lead_car_pos        = []
                 lead_car_speed      = []
                 pedestrian_pos      = []
+                obstacles_orientation = []
 
                 #####################################################################################################
                 # Acquire information about non playable agents (vehicles and pedestrians) and update obstacles list
@@ -1108,18 +1109,20 @@ def exec_waypoint_nav_demo(args):
                                 agent.vehicle.transform.location.y,
                                 round(math.radians(agent.vehicle.transform.rotation.yaw), 4)])
                         lead_car_speed.append(agent.vehicle.forward_speed)
-                        obstacles.append(obstacle_to_world(agent.vehicle.transform.location,
+                        obstacles.append((obstacle_to_world(agent.vehicle.transform.location,
                                                            agent.vehicle.bounding_box.extent,
-                                                           agent.vehicle.transform.rotation))
+                                                           agent.vehicle.transform.rotation), agent.id))
+                        obstacles_orientation.append([agent.id,round(math.radians(agent.vehicle.transform.rotation.yaw), 4)])
 
                     if agent.HasField('pedestrian'):
                         pedestrian_pos.append(
                                 [agent.pedestrian.transform.location.x,
                                 agent.pedestrian.transform.location.y,
                                 agent.pedestrian.transform.location.z])
-                        obstacles.append(obstacle_to_world(agent.pedestrian.transform.location,
+                        obstacles.append((obstacle_to_world(agent.pedestrian.transform.location,
                                                            agent.pedestrian.bounding_box.extent,
-                                                           agent.pedestrian.transform.rotation))
+                                                           agent.pedestrian.transform.rotation),agent.id))
+                    obstacles_orientation.append([agent.id,round(math.radians(agent.pedestrian.transform.rotation.yaw), 4)])
 
                 ###################################################################
                 # Acquire information about trafficlight position and frame to show
@@ -1207,10 +1210,9 @@ def exec_waypoint_nav_demo(args):
                 paths = local_planner.transform_paths(paths, ego_state)
 
                 # Perform collision checking.
-                collision_check_array = lp._collision_checker.collision_check(paths, obstacles)
-
+                collision_check_array,collision_id_array = lp._collision_checker.collision_check(paths, obstacles)
                 # Compute the best local path and check if occluded.
-                best_index, best_path_occluded = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
+                best_index, best_path_occluded = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state, collision_id_array, obstacles_orientation,ego_state)
                 # If no path was feasible, continue to follow the previous best path.
                 if best_index == None:
                     best_path = lp._prev_best_path

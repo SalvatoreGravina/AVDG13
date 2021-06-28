@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import scipy.spatial
+import math
 from math import sin, cos, pi, sqrt
 
 class CollisionChecker:
@@ -38,6 +39,7 @@ class CollisionChecker:
                 ith path in the paths list.
         """
         collision_check_array = np.zeros(len(paths), dtype=bool)
+        collision_id_array =[-1 for i in range(len(paths))]
         for i in range(len(paths)):
             collision_free = True
             path           = paths[i]
@@ -76,7 +78,7 @@ class CollisionChecker:
                 # the collision_free flag should be set to false for this flag
                 for k in range(len(obstacles)):
                     collision_dists = \
-                        scipy.spatial.distance.cdist(obstacles[k], 
+                        scipy.spatial.distance.cdist(obstacles[k][0], 
                                                      circle_locations)
                     collision_dists = np.subtract(collision_dists, 
                                                   self._circle_radii)
@@ -84,13 +86,15 @@ class CollisionChecker:
                                      not np.any(collision_dists < 0)
 
                     if not collision_free:
+                        collision_id_array[i] = obstacles[k][1]
                         break
                 if not collision_free:
+                    collision_id_array[i] = obstacles[k][1]
                     break
 
             collision_check_array[i] = collision_free
 
-        return collision_check_array
+        return collision_check_array, collision_id_array
 
     # Selects the best path in the path set, according to how closely
     # it follows the lane centerline, and how far away it is from other
@@ -103,7 +107,7 @@ class CollisionChecker:
     # profile and return the central path as the best path.
     # collision_check_array contains True at index i if paths[i] is
     # collision-free, otherwise it contains False.
-    def select_best_path_index(self, paths, collision_check_array, goal_state):
+    def select_best_path_index(self, paths, collision_check_array, goal_state, collision_id_array, obstacle_orientation,ego_state):
         """Returns the path index which is best suited for the vehicle to
         traverse.
 
@@ -160,11 +164,16 @@ class CollisionChecker:
                     else:
                         if not collision_check_array[j]:
                             pass
-
             # Handle the case of colliding paths.
             else:
+                for obstacle in obstacle_orientation:
+                    if collision_id_array[i]==obstacle[0]:
+                        if abs(ego_state[2]-obstacle[1]) > math.pi/8 and abs(ego_state[2]-obstacle[1]) < 2.94:
+                            print('mi fermo')
+                            best_path_occluded = True
+                            best_index=int(len(paths)/2)
+                            return best_index, best_path_occluded
                 score = float('Inf')
-
 
             # Set the best index to be the path index with the lowest score
             if score < best_score:
