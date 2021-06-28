@@ -9,10 +9,10 @@ STAY_STOPPED = 2
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
 # accuracy thresholds for trafficlight
-TRAFFICLIGHT_STOP_THRESHOLD = 0.40
-TRAFFICLIGHT_GO_THRESHOLD = 0.45
+TRAFFICLIGHT_STOP_THRESHOLD = 0.35
+TRAFFICLIGHT_GO_THRESHOLD = 0.40
 # distance for which a waypoint is passed
-PASSED_WAYPOINT_THRESHOLD = 0.40
+PASSED_WAYPOINT_THRESHOLD = 0.50
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead, waypoints_intersections):

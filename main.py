@@ -42,11 +42,11 @@ from traffic_light_detection_module.predict import predict_traffic_light_state
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 61     #  spawn index for player
-DESTINATION_INDEX = 148       # Setting a Destination HERE
-NUM_PEDESTRIANS        = 200     # total number of pedestrians to spawn
-NUM_VEHICLES           = 10    # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 2      # seed for pedestrian spawn randomizer
+PLAYER_START_INDEX = 139     #  spawn index for player
+DESTINATION_INDEX = 149       # Setting a Destination HERE
+NUM_PEDESTRIANS        = 100     # total number of pedestrians to spawn
+NUM_VEHICLES           = 1    # total number of vehicles to spawn
+SEED_PEDESTRIANS       = 73      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 4     # seed for vehicle spawn randomizer
 ###############################################################################àà
 
@@ -1099,10 +1099,9 @@ def exec_waypoint_nav_demo(args):
                 pedestrian_pos      = []
                 obstacles_orientation = []
 
-                ##########################################################################
-                # Acquire information about non playable agents (vehicles and pedestrians)
-                # and update obstacles list and obstacles_orientation
-                ##########################################################################
+                #####################################################################################################
+                # Acquire information about non playable agents (vehicles and pedestrians) and update obstacles list
+                #####################################################################################################
                 for agent in measurement_data.non_player_agents:
                     if agent.HasField('vehicle'):
                         lead_car_pos.append(
@@ -1213,12 +1212,7 @@ def exec_waypoint_nav_demo(args):
                 # Perform collision checking.
                 collision_check_array,collision_id_array = lp._collision_checker.collision_check(paths, obstacles)
                 # Compute the best local path and check if occluded.
-                best_index, best_path_occluded = lp._collision_checker.select_best_path_index(paths,
-                                                                                             collision_check_array,
-                                                                                             bp._goal_state,
-                                                                                             collision_id_array,
-                                                                                             obstacles_orientation, 
-                                                                                             ego_state)
+                best_index, best_path_occluded = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state, collision_id_array, obstacles_orientation,ego_state)
                 # If no path was feasible, continue to follow the previous best path.
                 if best_index == None:
                     best_path = lp._prev_best_path
