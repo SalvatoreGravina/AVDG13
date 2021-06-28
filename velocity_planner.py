@@ -160,6 +160,8 @@ class VelocityPlanner:
                         paths[1][i]
                 It is assumed that the stop line is at the end of the path.
             start_speed: speed which the vehicle starts with (m/s)
+            best_path_occluded: If true, the best path collides with an obstacle
+                so we need to decelerate
         internal parameters of interest:
             self._slow_speed: coasting speed (m/s) of the vehicle before it 
                 comes to a stop

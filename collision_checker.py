@@ -11,9 +11,13 @@ class CollisionChecker:
         self._weight         = weight
 
     # Takes in a set of paths and obstacles, and returns an array
-    # of bools that says whether or not each path is collision free.
+    # of bools that says whether or not each path is collision free
+    # and an array with the agent id of the possible collision for
+    # each path
     def collision_check(self, paths, obstacles):
-        """Returns a bool array on whether each path is collision free.
+        """Returns a bool array on whether each path is collision free
+            and an array with the agent id of the possibile collision for
+            each path
 
         args:
             paths: A list of paths in the global frame.  
@@ -37,6 +41,8 @@ class CollisionChecker:
                 whether the path is collision-free (true), or not (false). The
                 ith index in the collision_check_array list corresponds to the
                 ith path in the paths list.
+            collision_id_array: a list of agent id which identify the agent that
+                occlude a specific path, if path is free, it set the id to -1
         """
         collision_check_array = np.zeros(len(paths), dtype=bool)
         collision_id_array =[-1 for i in range(len(paths))]
@@ -75,7 +81,8 @@ class CollisionChecker:
                 # Here, we will iterate through the obstacle points, and check
                 # if any of the obstacle points lies within any of our circles.
                 # If so, then the path will collide with an obstacle and
-                # the collision_free flag should be set to false for this flag
+                # the collision_free flag should be set to false for this flagù
+                # and we save the id of the agent colliding with the path
                 for k in range(len(obstacles)):
                     collision_dists = \
                         scipy.spatial.distance.cdist(obstacles[k][0], 
@@ -101,9 +108,11 @@ class CollisionChecker:
     # paths that are in collision. 
     # Disqualifies paths that collide with obstacles from the selection
     # process.
-    # Compute a threshold of the score beetween central and external paths
-    # If the best path is beetween the external ones, meaning it's score is
-    # higher than threshold, set a flag to True to compute a deceleration
+    # Compute a threshold of the score beetween central and external paths,
+    # if the colliding object is approaching the vehicle, start deceleration
+    # routine otherwise if the best path is beetween the external ones,
+    # meaning it's score is higher than threshold, 
+    # set a flag to True to compute a deceleration
     # profile and return the central path as the best path.
     # collision_check_array contains True at index i if paths[i] is
     # collision-free, otherwise it contains False.
@@ -129,6 +138,16 @@ class CollisionChecker:
                 ith path in the paths list.
             goal_state: Goal state for the vehicle to reach (centerline goal).
                 format: [x_goal, y_goal, v_goal], unit: [m, m, m/s]
+            collision_id_array: a list of agent id which identify the agent that
+                occlude a specific path, if path is free, it set the id to -1
+            obstacle_orientation: list of agent id and orientation for pedestrian
+                and vehicle
+                format: [[agent_id, yaw]]
+            ego_state: ego state vector for the vehicle. (global frame)
+                format: [ego_x, ego_y, ego_yaw, ego_open_loop_speed]
+                    ego_x and ego_y     : position (m)
+                    ego_yaw             : top-down orientation [-pi to pi]
+                    ego_open_loop_speed : open loop speed (m/s)
         useful variables:
             self._weight: Weight that is multiplied to the best index score.
         returns:
