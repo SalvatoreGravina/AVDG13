@@ -163,6 +163,8 @@ class BehaviouralPlanner:
             if state == 'go' and accuracy > TRAFFICLIGHT_GO_THRESHOLD:
                 self._state = FOLLOW_LANE
                 self._first_measure = False
+                self._trafficlight_state = []
+                self._trafficlight_state1 = []
                 print('passaggio a FOLLOW_LANE')
 
         # In this state, check to see if the trafficlight state
@@ -176,6 +178,7 @@ class BehaviouralPlanner:
                 self._first_measure = False
                 self._detection_state = False
                 self._trafficlight_state = []
+                self._trafficlight_state1 = []
                 print('passaggio a FOLLOW_LANE')                           
                     
         else:
