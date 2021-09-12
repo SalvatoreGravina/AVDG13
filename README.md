@@ -1,6 +1,10 @@
 # AVDG13
 
-Final project of "Autonomous Vehicle Driving" course
+The project include 3 tasks:
+- [predict the state of a traffic light] (https://youtu.be/eHCn3hBHzhY)
+- [avoid collision with objects] (https://youtu.be/peMbqIoSts8)
+- [avoid collision with vehicles] (https://youtu.be/zgoITMXW6A4)
+
 
 ## Authors: Group 13
 
